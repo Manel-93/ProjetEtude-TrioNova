@@ -1,7 +1,7 @@
 export const errorHandler = (err, req, res, next) => {
   console.error('Error:', err);
 
-  // Erreur de validation Joi (déjà gérée par validationMiddleware)
+  // erreur de validation Joi
   if (err.name === 'ValidationError') {
     return res.status(400).json({
       success: false,
@@ -12,7 +12,7 @@ export const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Erreur JWT
+  // erreur JWT
   if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
     return res.status(401).json({
       success: false,
@@ -23,7 +23,7 @@ export const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Erreur personnalisée avec message
+  // erreur personnalisée avec message
   if (err.message) {
     const statusCode = err.statusCode || 500;
     return res.status(statusCode).json({
@@ -35,7 +35,7 @@ export const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Erreur par défaut
+  // erreur par défaut
   res.status(500).json({
     success: false,
     error: {

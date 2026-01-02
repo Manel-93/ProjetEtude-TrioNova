@@ -1,5 +1,6 @@
 import { UserRepository } from '../repositories/userRepository.js';
 import { TokenRepository } from '../repositories/tokenRepository.js';
+import { LoginHistoryRepository } from '../repositories/loginHistoryRepository.js';
 import { PasswordService } from './passwordService.js';
 import { JwtService } from './jwtService.js';
 import { EmailService } from './emailService.js';
@@ -8,6 +9,7 @@ export class AuthService {
   constructor() {
     this.userRepository = new UserRepository();
     this.tokenRepository = new TokenRepository();
+    this.loginHistoryRepository = new LoginHistoryRepository();
     this.passwordService = new PasswordService();
     this.jwtService = new JwtService();
     this.emailService = new EmailService();
@@ -84,22 +86,45 @@ export class AuthService {
     return { message: 'Email confirmé avec succès' };
   }
 
-  async login(email, password) {
+  async login(email, password, ipAddress = null, userAgent = null) {
     // Trouver l'utilisateur
     const user = await this.userRepository.findByEmail(email);
+    
+    // Logger la tentative de connexion (même en cas d'échec)
+    const logLogin = async (success, failureReason = null) => {
+      if (user) {
+        await this.loginHistoryRepository.create({
+          userId: user.id,
+          ipAddress: ipAddress || 'unknown',
+          userAgent: userAgent || 'unknown',
+          success,
+          failureReason
+        });
+      }
+    };
+
     if (!user) {
+      await logLogin(false, 'Email introuvable');
       throw new Error('Email ou mot de passe incorrect');
     }
 
     // Vérifier le mot de passe
     const isPasswordValid = await this.passwordService.comparePassword(password, user.password_hash);
     if (!isPasswordValid) {
+      await logLogin(false, 'Mot de passe incorrect');
       throw new Error('Email ou mot de passe incorrect');
     }
 
     // Vérifier que l'email est confirmé
     if (!user.is_email_confirmed) {
+      await logLogin(false, 'Email non confirmé');
       throw new Error('Veuillez confirmer votre email avant de vous connecter');
+    }
+
+    // Vérifier que le compte est actif
+    if (!user.is_active) {
+      await logLogin(false, 'Compte désactivé');
+      throw new Error('Compte désactivé');
     }
 
     // Générer les tokens
@@ -122,6 +147,9 @@ export class AuthService {
       type: 'refresh',
       expiresAt
     });
+
+    // Logger la connexion réussie
+    await logLogin(true);
 
     return {
       accessToken,

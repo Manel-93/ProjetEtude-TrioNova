@@ -1,40 +1,31 @@
-# TrioNova API - Module d'Authentification
+1) TrioNova Backend API 
 
-API Backend REST pour plateforme e-commerce de produits médicaux - Module d'authentification sécurisé.
+API Backend REST pour la refonte de la plateforme e-commerce AltheSystems 
 
-## 🚀 Installation
+Guide d'installation :
 
-### Prérequis
-- Node.js (v18+)
-- MySQL (v8+) ou MySQL hébergé (ex: AWS RDS, PlanetScale)
-- MongoDB (v6+) local ou MongoDB Atlas (cluster)
-- npm ou yarn
+Prérequis
+- Node.js
+- MySQL (phpmyadmin) 
+- MongoDB Atlas (cluster voir lien dans le fichier .env)
+- npm 
 
-### Étapes d'installation
+Étapes d'installation
 
-1. **Cloner le projet et installer les dépendances**
-```bash
+a. Cloner le projet et installer les dépendances
+ctrl + %ù
 npm install
-```
 
-2. **Configurer les variables d'environnement**
+
+b.Configurer les variables d'environnement
 Créer un fichier `.env` à la racine du projet avec les variables suivantes :
-```env
-PORT=3000
-NODE_ENV=development
+# MySQL Configuration
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=""
+DB_NAME=trio_nova_db
 
-MYSQL_HOST=localhost
-MYSQL_PORT=3306
-MYSQL_USER=root
-MYSQL_PASSWORD=votre_mot_de_passe
-MYSQL_DATABASE=trio_nova_db
-
-# MongoDB - URI complète (local ou MongoDB Atlas)
-# Format local: mongodb://localhost:27017/trio_nova_db
-# Format Atlas: mongodb+srv://username:password@cluster.mongodb.net/trio_nova_db?retryWrites=true&w=majority
-MONGODB_URI=mongodb://localhost:27017/trio_nova_db
-# Optionnel: nom de la base de données (si différent de celui dans l'URI)
-# MONGODB_DATABASE=trio_nova_db
+MONGODB_URI=mongodb+srv://sterenngougeon_db_user:rqlTLsE2HUV87P6q@cluster0.0mkb2aa.mongodb.net/?appName=Cluster0
 
 JWT_SECRET=votre_secret_jwt_super_securise
 JWT_ACCESS_EXPIRES_IN=15m
@@ -42,224 +33,77 @@ JWT_REFRESH_EXPIRES_IN=7d
 JWT_EMAIL_CONFIRM_EXPIRES_IN=24h
 JWT_PASSWORD_RESET_EXPIRES_IN=1h
 
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USER=votre_email@gmail.com
-EMAIL_PASSWORD=votre_mot_de_passe_application
+EMAIL_HOST=sandbox.smtp.mailtrap.io
+EMAIL_PORT=2525
+EMAIL_USER=8c4af8d35e888f
+EMAIL_PASSWORD=5af72577da5741
 EMAIL_FROM=noreply@trionova.com
-```
 
-3. **Configurer les bases de données**
+PORT=5000
 
-**MySQL :**
-```sql
+
+c. Configurer les bases de données
+
+MySQL :
 CREATE DATABASE trio_nova_db;
-```
 
-**MongoDB Atlas (si utilisé) :**
+
+MongoDB Atlas:
 - Créer un cluster sur [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
 - Créer un utilisateur avec les permissions nécessaires
 - Ajouter votre IP dans la whitelist (Network Access)
 - Copier l'URI de connexion et l'ajouter dans `.env` :
-  ```
-  MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/trio_nova_db?retryWrites=true&w=majority
-  ```
 
-4. **Démarrer le serveur**
-```bash
-# Mode développement (avec nodemon)
+  MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/trio_nova_db?retryWrites=true&w=majority
+
+d. Démarrer le serveur
+Ouvrir le terminal
 npm run dev
 
-# Mode production
+Mode production
 npm start
-```
 
-Le serveur démarre sur `http://localhost:3000`
 
-## 📋 Routes API - Collection Postman
+2. Routes API - Collection Postman
 
-### Base URL
-```
-http://localhost:3000/api/auth
-```
+Base URL: `http://localhost:5000/api/`
 
-### 1. Inscription
-**POST** `/register`
+### Routes Authentification
+- POST /auth/register
+- POST /auth/confirm-email
+- POST /auth/login
+- POST /auth/refresh
+- POST /auth/logout
+- POST /auth/forgot-password
+- POST /auth/reset-password
+- PATCH /auth/change-password
 
-**Body (JSON):**
-```json
-{
-  "email": "user@example.com",
-  "password": "Password123!",
-  "firstName": "John",
-  "lastName": "Doe"
-}
-```
+### Routes Utilisateurs (Authentifié)
+- GET /users/me
+- PATCH /users/me
+- DELETE /users/me
+- GET /users/me/login-history
+- GET /users/me/addresses
+- POST /users/me/addresses
+- PATCH /users/me/addresses/:id
+- PATCH /users/me/addresses/:id/default
+- DELETE /users/me/addresses/:id
+- GET /users/me/payment-methods
+- POST /users/me/payment-methods
+- PATCH /users/me/payment-methods/:id/default
+- DELETE /users/me/payment-methods/:id
 
-**Réponse 201:**
-```json
-{
-  "success": true,
-  "data": {
-    "user": {
-      "id": 1,
-      "email": "user@example.com",
-      "firstName": "John",
-      "lastName": "Doe"
-    },
-    "message": "Inscription réussie. Un email de confirmation a été envoyé."
-  }
-}
-```
+### Routes Admin (Authentifié + Admin)
+- GET /users/admin/users
+- GET /users/admin/users/:id
+- PATCH /users/admin/users/:id/status
+- DELETE /users/admin/users/:id
 
-### 2. Confirmation Email
-**POST** `/confirm-email`
+Le serveur démarre sur `http://localhost:5000`
 
-**Body (JSON):**
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
 
-**Réponse 200:**
-```json
-{
-  "success": true,
-  "message": "Email confirmé avec succès"
-}
-```
+3. Architecture
 
-### 3. Connexion
-**POST** `/login`
-
-**Body (JSON):**
-```json
-{
-  "email": "user@example.com",
-  "password": "Password123!"
-}
-```
-
-**Réponse 200:**
-```json
-{
-  "success": true,
-  "data": {
-    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "user": {
-      "id": 1,
-      "email": "user@example.com",
-      "firstName": "John",
-      "lastName": "Doe"
-    }
-  }
-}
-```
-
-### 4. Refresh Token
-**POST** `/refresh`
-
-**Body (JSON):**
-```json
-{
-  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-
-**Réponse 200:**
-```json
-{
-  "success": true,
-  "data": {
-    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-  }
-}
-```
-
-### 5. Déconnexion
-**POST** `/logout`
-
-**Body (JSON):**
-```json
-{
-  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-
-**Réponse 200:**
-```json
-{
-  "success": true,
-  "message": "Déconnexion réussie"
-}
-```
-
-### 6. Mot de passe oublié
-**POST** `/forgot-password`
-
-**Body (JSON):**
-```json
-{
-  "email": "user@example.com"
-}
-```
-
-**Réponse 200:**
-```json
-{
-  "success": true,
-  "message": "Si cet email existe, un lien de réinitialisation a été envoyé"
-}
-```
-
-### 7. Réinitialisation mot de passe
-**POST** `/reset-password`
-
-**Body (JSON):**
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "newPassword": "NewPassword123!"
-}
-```
-
-**Réponse 200:**
-```json
-{
-  "success": true,
-  "message": "Mot de passe réinitialisé avec succès"
-}
-```
-
-### 8. Changement mot de passe
-**PATCH** `/change-password`
-
-**Headers:**
-```
-Authorization: Bearer <accessToken>
-```
-
-**Body (JSON):**
-```json
-{
-  "currentPassword": "Password123!",
-  "newPassword": "NewPassword123!"
-}
-```
-
-**Réponse 200:**
-```json
-{
-  "success": true,
-  "message": "Mot de passe modifié avec succès"
-}
-```
-
-## 🏗️ Architecture
-
-```
 trio-nova-api/
 ├── config/
 │   ├── database.js      # Connexions MySQL et MongoDB
@@ -267,69 +111,61 @@ trio-nova-api/
 │   └── email.js         # Configuration email (Nodemailer)
 │
 ├── repositories/
-│   ├── userRepository.js    # Accès DB MySQL (users)
-│   └── tokenRepository.js   # Accès DB MongoDB (tokens)
+│   ├── userRepository.js          # Accès DB MySQL (users)
+│   ├── tokenRepository.js         # Accès DB MongoDB (tokens)
+│   ├── loginHistoryRepository.js  # Accès DB MongoDB (historique connexions)
+│   ├── addressRepository.js       # Accès DB MongoDB (adresses)
+│   └── paymentMethodRepository.js # Accès DB MongoDB (méthodes paiement)
 │
 ├── services/
 │   ├── authService.js        # Logique métier authentification
+│   ├── userService.js        # Logique métier utilisateurs
 │   ├── jwtService.js         # Génération/vérification JWT
 │   ├── passwordService.js    # Hashage et validation mot de passe
 │   └── emailService.js       # Envoi emails (confirmation, reset)
 │
 ├── controllers/
-│   └── authController.js     # Contrôleurs HTTP
+│   ├── authController.js     # Contrôleurs authentification
+│   ├── userController.js     # Contrôleurs utilisateur
+│   └── adminController.js    # Contrôleurs admin
 │
 ├── middlewares/
 │   ├── authMiddleware.js         # Protection JWT
-│   ├── validationMiddleware.js   # Validation Joi
-│   └── errorMiddleware.js        # Gestion centralisée erreurs
+│   ├── adminMiddleware.js         # Vérification rôle admin
+│   ├── validationMiddleware.js    # Validation Joi
+│   └── errorMiddleware.js         # Gestion centralisée erreurs
 │
 ├── routes/
-│   └── authRoutes.js         # Définition routes Express
+│   ├── authRoutes.js         # Routes authentification
+│   └── userRoutes.js          # Routes utilisateurs et admin
 │
 ├── validators/
-│   └── authValidator.js     # Schémas validation Joi
+│   ├── authValidator.js       # Schémas validation auth
+│   └── userValidator.js      # Schémas validation users
+│
+├── models/
+│   ├── Token.js              # Modèle Token (MongoDB)
+│   ├── LoginHistory.js       # Modèle historique connexions (MongoDB)
+│   ├── PaymentMethod.js      # Modèle méthodes paiement (MongoDB)
+│   └── Address.js            # Modèle adresses (MongoDB)
 │
 ├── server.js                 # Point d'entrée Express
 └── package.json
-```
 
-### Flux de données
+5. Flux de données
 
-```
-Client → Routes → Middlewares (validation/auth) → Controllers → Services → Repositories → Database
+Client → Routes * → Middlewares * (validation/auth) * → Controllers * → Services * → Repositories * → Database
                                                                                     ↓
-                                                                              Réponse JSON normalisée
-```
+                                                                          Réponse JSON 
 
-### Séparation des responsabilités
+Routes* : Définition des endpoints et association middlewares
+Controllers* : Gestion requêtes/réponses HTTP
+Services* : Logique métier et orchestration
+Repositories* : Accès aux bases de données 
+Middlewares* : Validation, authentification, gestion erreurs
+Validators* : Schémas de validation des données
 
-- **Routes** : Définition des endpoints et association middlewares
-- **Controllers** : Gestion requêtes/réponses HTTP
-- **Services** : Logique métier et orchestration
-- **Repositories** : Accès aux bases de données (abstraction)
-- **Middlewares** : Validation, authentification, gestion erreurs
-- **Validators** : Schémas de validation des données
-
-### Bases de données
-
-- **MySQL** : Données utilisateurs (table `users`)
-- **MongoDB** : Tokens (collection `tokens` - email_confirm, refresh, password_reset)
-
-### Sécurité
-
-- ✅ Hashage bcrypt (10 rounds)
-- ✅ JWT avec expiration configurable
-- ✅ Validation mot de passe fort (8+ caractères, majuscule, minuscule, chiffre, caractère spécial)
-- ✅ Email unique
-- ✅ Compte non confirmé → accès refusé
-- ✅ Rate limiting (100 req/15min)
-- ✅ Helmet.js (headers sécurité)
-- ✅ Validation entrées (Joi)
-- ✅ Gestion centralisée erreurs
-
-## 📝 Notes
-
+Important !
 - Les tokens de confirmation email expirent après 24h
 - Les tokens de réinitialisation expirent après 1h
 - Les access tokens expirent après 15 minutes

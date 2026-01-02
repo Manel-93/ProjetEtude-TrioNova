@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { initializeDatabases } from './config/database.js';
 import authRoutes from './routes/authRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 import { errorHandler, notFoundHandler } from './middlewares/errorMiddleware.js';
 
 dotenv.config();
@@ -12,14 +13,14 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Security middlewares
+// Securite
 app.use(helmet());
 app.use(cors());
 
-// Rate limiting
+// Limitation
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limite chaque IP à 100 requêtes par windowMs
+  windowMs: 15 * 60 * 1000, // 15 minutes pour la duree de vie des tokens
+  max: 100, 
   message: {
     success: false,
     error: {
@@ -30,11 +31,9 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Body parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check
 app.get('/health', (req, res) => {
   res.json({
     success: true,
@@ -45,12 +44,13 @@ app.get('/health', (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 
-// Error handling
+// Gestion des erreurs
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-// Start server
+// Demarrage du serveur
 const startServer = async () => {
   try {
     await initializeDatabases();
