@@ -66,16 +66,38 @@ npm start
 
 2. Routes API - Collection Postman
 
-http://localhost:5000/api/
+Base URL: `http://localhost:5000/api/`
 
-POST /auth/register
-POST /auth/confirm-email
-POST /auth/login
-POST /auth/refresh-token
-POST /auth/logout
-POST /auth/forgot-password
-POST /auth/reset-password
-PATCH /auth/change-password
+### Routes Authentification
+- POST /auth/register
+- POST /auth/confirm-email
+- POST /auth/login
+- POST /auth/refresh
+- POST /auth/logout
+- POST /auth/forgot-password
+- POST /auth/reset-password
+- PATCH /auth/change-password
+
+### Routes Utilisateurs (Authentifié)
+- GET /users/me
+- PATCH /users/me
+- DELETE /users/me
+- GET /users/me/login-history
+- GET /users/me/addresses
+- POST /users/me/addresses
+- PATCH /users/me/addresses/:id
+- PATCH /users/me/addresses/:id/default
+- DELETE /users/me/addresses/:id
+- GET /users/me/payment-methods
+- POST /users/me/payment-methods
+- PATCH /users/me/payment-methods/:id/default
+- DELETE /users/me/payment-methods/:id
+
+### Routes Admin (Authentifié + Admin)
+- GET /users/admin/users
+- GET /users/admin/users/:id
+- PATCH /users/admin/users/:id/status
+- DELETE /users/admin/users/:id
 
 Le serveur démarre sur `http://localhost:5000`
 
@@ -89,28 +111,43 @@ trio-nova-api/
 │   └── email.js         # Configuration email (Nodemailer)
 │
 ├── repositories/
-│   ├── userRepository.js    # Accès DB MySQL (users)
-│   └── tokenRepository.js   # Accès DB MongoDB (tokens)
+│   ├── userRepository.js          # Accès DB MySQL (users)
+│   ├── tokenRepository.js         # Accès DB MongoDB (tokens)
+│   ├── loginHistoryRepository.js  # Accès DB MongoDB (historique connexions)
+│   ├── addressRepository.js       # Accès DB MongoDB (adresses)
+│   └── paymentMethodRepository.js # Accès DB MongoDB (méthodes paiement)
 │
 ├── services/
 │   ├── authService.js        # Logique métier authentification
+│   ├── userService.js        # Logique métier utilisateurs
 │   ├── jwtService.js         # Génération/vérification JWT
 │   ├── passwordService.js    # Hashage et validation mot de passe
 │   └── emailService.js       # Envoi emails (confirmation, reset)
 │
 ├── controllers/
-│   └── authController.js     # Contrôleurs HTTP
+│   ├── authController.js     # Contrôleurs authentification
+│   ├── userController.js     # Contrôleurs utilisateur
+│   └── adminController.js    # Contrôleurs admin
 │
 ├── middlewares/
 │   ├── authMiddleware.js         # Protection JWT
-│   ├── validationMiddleware.js   # Validation Joi
-│   └── errorMiddleware.js        # Gestion centralisée erreurs
+│   ├── adminMiddleware.js         # Vérification rôle admin
+│   ├── validationMiddleware.js    # Validation Joi
+│   └── errorMiddleware.js         # Gestion centralisée erreurs
 │
 ├── routes/
-│   └── authRoutes.js         # Définition routes Express
+│   ├── authRoutes.js         # Routes authentification
+│   └── userRoutes.js          # Routes utilisateurs et admin
 │
 ├── validators/
-│   └── authValidator.js     # Schémas validation Joi
+│   ├── authValidator.js       # Schémas validation auth
+│   └── userValidator.js      # Schémas validation users
+│
+├── models/
+│   ├── Token.js              # Modèle Token (MongoDB)
+│   ├── LoginHistory.js       # Modèle historique connexions (MongoDB)
+│   ├── PaymentMethod.js      # Modèle méthodes paiement (MongoDB)
+│   └── Address.js            # Modèle adresses (MongoDB)
 │
 ├── server.js                 # Point d'entrée Express
 └── package.json

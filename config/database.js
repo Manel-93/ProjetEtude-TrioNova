@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// MySQL Connection Pool
+// MySQL connexion
 let mysqlPool = null;
 
 export const getMySQLConnection = async () => {
@@ -23,7 +23,7 @@ export const getMySQLConnection = async () => {
   return mysqlPool;
 };
 
-// MongoDB Connection avec Mongoose
+// MongoDB connexion avec Mongoose
 let isMongoConnected = false;
 
 export const connectMongoDB = async () => {
@@ -33,7 +33,7 @@ export const connectMongoDB = async () => {
 
   const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/trio_nova_db';
   
-  // Options de connexion pour MongoDB Atlas
+  // Options de connexion
   const options = {
     serverSelectionTimeoutMS: 5000,
     socketTimeoutMS: 45000,
@@ -46,7 +46,7 @@ export const connectMongoDB = async () => {
     await mongoose.connect(mongoUri, options);
     isMongoConnected = true;
     
-    // Gestion des événements de connexion
+    // Gestion des evenements de connexion
     mongoose.connection.on('error', (err) => {
       console.error('❌ MongoDB connection error:', err);
       isMongoConnected = false;
@@ -74,10 +74,10 @@ export const getMongoConnection = async () => {
   return await connectMongoDB();
 };
 
-// Initialize databases
+// Initialisation des bases de donnees
 export const initializeDatabases = async () => {
   try {
-    // MySQL - Create users table
+    // MySQL - Creation de la table users
     const mysqlPool = await getMySQLConnection();
     await mysqlPool.execute(`
       CREATE TABLE IF NOT EXISTS users (
@@ -86,11 +86,86 @@ export const initializeDatabases = async () => {
         password_hash VARCHAR(255) NOT NULL,
         first_name VARCHAR(100) NOT NULL,
         last_name VARCHAR(100) NOT NULL,
+        phone VARCHAR(20),
+        role ENUM('USER', 'ADMIN') DEFAULT 'USER',
         is_email_confirmed BOOLEAN DEFAULT FALSE,
+        is_active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_email (email),
-        INDEX idx_email_confirmed (is_email_confirmed)
+        INDEX idx_email_confirmed (is_email_confirmed),
+        INDEX idx_role (role),
+        INDEX idx_is_active (is_active)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+    
+    // Migration : Ajouter les colonnes si elles n'existent pas
+    try {
+      const [columns] = await mysqlPool.execute(`
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'users'
+      `, [process.env.MYSQL_DATABASE || 'trio_nova_db']);
+      
+      const existingColumns = columns.map(col => col.COLUMN_NAME);
+      
+      if (!existingColumns.includes('phone')) {
+        await mysqlPool.execute(`ALTER TABLE users ADD COLUMN phone VARCHAR(20)`);
+      }
+      if (!existingColumns.includes('role')) {
+        await mysqlPool.execute(`ALTER TABLE users ADD COLUMN role ENUM('USER', 'ADMIN') DEFAULT 'USER'`);
+      }
+      if (!existingColumns.includes('is_active')) {
+        await mysqlPool.execute(`ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT TRUE`);
+      }
+    } catch (error) {
+      console.warn('Migration warning:', error.message);
+    }
+
+    // Création de la table addresses
+    await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS addresses (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        type ENUM('billing', 'shipping') NOT NULL,
+        is_default BOOLEAN DEFAULT FALSE,
+        first_name VARCHAR(100) NOT NULL,
+        last_name VARCHAR(100) NOT NULL,
+        company VARCHAR(100),
+        address_line1 VARCHAR(200) NOT NULL,
+        address_line2 VARCHAR(200),
+        city VARCHAR(100) NOT NULL,
+        postal_code VARCHAR(20) NOT NULL,
+        country VARCHAR(100) NOT NULL,
+        phone VARCHAR(20),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_user_id (user_id),
+        INDEX idx_user_type (user_id, type),
+        INDEX idx_user_type_default (user_id, type, is_default)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Création de la table payment_methods
+    await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS payment_methods (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        stripe_customer_id VARCHAR(255) NOT NULL,
+        stripe_payment_method_id VARCHAR(255) NOT NULL,
+        type ENUM('card', 'bank_account') DEFAULT 'card',
+        is_default BOOLEAN DEFAULT FALSE,
+        last4 VARCHAR(4),
+        brand VARCHAR(50),
+        expiry_month INT,
+        expiry_year INT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_user_id (user_id),
+        INDEX idx_stripe_customer_id (stripe_customer_id),
+        INDEX idx_user_default (user_id, is_default)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
     console.log('✅ MySQL database initialized');
@@ -100,12 +175,13 @@ export const initializeDatabases = async () => {
   }
 
   try {
-    // MongoDB - Connexion avec Mongoose
+    // MongoDB - Connexion
     const mongoConnection = await connectMongoDB();
     const dbName = mongoConnection.db.databaseName;
     
-    // Charger les modèles Mongoose
+    // Charger les modèles Mongoose (seulement Token et LoginHistory)
     await import('../models/Token.js');
+    await import('../models/LoginHistory.js');
     
     console.log(`✅ MongoDB connected (database: ${dbName})`);
   } catch (error) {
