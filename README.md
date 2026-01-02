@@ -1,24 +1,26 @@
-1) TrioNova Backend API 
+# TrioNova Backend API
 
-API Backend REST pour la refonte de la plateforme e-commerce AltheSystems 
+API Backend REST pour la refonte de la plateforme e-commerce AltheSystems
 
-Guide d'installation :
+## Guide d'installation
 
-Prérequis
+### Prérequis
 - Node.js
 - MySQL (phpmyadmin) 
 - MongoDB Atlas (cluster voir lien dans le fichier .env)
 - npm 
 
-Étapes d'installation
+### Étapes d'installation
 
-a. Cloner le projet et installer les dépendances
-ctrl + %ù
+#### a. Cloner le projet et installer les dépendances
+```bash
 npm install
+```
 
-
-b.Configurer les variables d'environnement
+#### b. Configurer les variables d'environnement
 Créer un fichier `.env` à la racine du projet avec les variables suivantes :
+
+```env
 # MySQL Configuration
 DB_HOST=localhost
 DB_USER=root
@@ -40,33 +42,39 @@ EMAIL_PASSWORD=5af72577da5741
 EMAIL_FROM=noreply@trionova.com
 
 PORT=5000
+```
 
+#### c. Configurer les bases de données
 
-c. Configurer les bases de données
-
-MySQL :
+**MySQL :**
+```sql
 CREATE DATABASE trio_nova_db;
+```
 
-
-MongoDB Atlas:
+**MongoDB Atlas:**
 - Créer un cluster sur [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
 - Créer un utilisateur avec les permissions nécessaires
 - Ajouter votre IP dans la whitelist (Network Access)
 - Copier l'URI de connexion et l'ajouter dans `.env` :
 
+  ```
   MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/trio_nova_db?retryWrites=true&w=majority
+  ```
 
-d. Démarrer le serveur
-Ouvrir le terminal
+#### d. Démarrer le serveur
+
+**Mode développement :**
+```bash
 npm run dev
+```
 
-Mode production
+**Mode production :**
+```bash
 npm start
+```
 
+## Routes API - Collection Postman
 
-2. Routes API - Collection Postman
-
-<<<<<<< HEAD
 Base URL: `http://localhost:5000/api/`
 
 ### Routes Authentification
@@ -102,27 +110,9 @@ Base URL: `http://localhost:5000/api/`
 
 Le serveur démarre sur `http://localhost:5000`
 
+## Architecture
 
-3. Architecture
-
-=======
-http://localhost:5000/api/
-
-POST /auth/register
-POST /auth/confirm-email
-POST /auth/login
-POST /auth/refresh-token
-POST /auth/logout
-POST /auth/forgot-password
-POST /auth/reset-password
-PATCH /auth/change-password
-
-Le serveur démarre sur `http://localhost:5000`
-
-
-3. Architecture
-
->>>>>>> a5c5062645d865a6df082b69e156255244ca1bea
+```
 trio-nova-api/
 ├── config/
 │   ├── database.js      # Connexions MySQL et MongoDB
@@ -170,21 +160,25 @@ trio-nova-api/
 │
 ├── server.js                 # Point d'entrée Express
 └── package.json
+```
 
-5. Flux de données
+## Flux de données
 
-Client → Routes * → Middlewares * (validation/auth) * → Controllers * → Services * → Repositories * → Database
+```
+Client → Routes → Middlewares (validation/auth) → Controllers → Services → Repositories → Database
                                                                                     ↓
                                                                           Réponse JSON 
+```
 
-Routes* : Définition des endpoints et association middlewares
-Controllers* : Gestion requêtes/réponses HTTP
-Services* : Logique métier et orchestration
-Repositories* : Accès aux bases de données 
-Middlewares* : Validation, authentification, gestion erreurs
-Validators* : Schémas de validation des données
+- **Routes** : Définition des endpoints et association middlewares
+- **Controllers** : Gestion requêtes/réponses HTTP
+- **Services** : Logique métier et orchestration
+- **Repositories** : Accès aux bases de données 
+- **Middlewares** : Validation, authentification, gestion erreurs
+- **Validators** : Schémas de validation des données
 
-Important !
+## Important !
+
 - Les tokens de confirmation email expirent après 24h
 - Les tokens de réinitialisation expirent après 1h
 - Les access tokens expirent après 15 minutes

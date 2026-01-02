@@ -178,8 +178,7 @@ export const initializeDatabases = async () => {
     // MongoDB - Connexion
     const mongoConnection = await connectMongoDB();
     const dbName = mongoConnection.db.databaseName;
-    
-    // Charger les modèles Mongoose (seulement Token et LoginHistory)
+  
     await import('../models/Token.js');
     await import('../models/LoginHistory.js');
     
