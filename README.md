@@ -66,6 +66,7 @@ npm start
 
 2. Routes API - Collection Postman
 
+<<<<<<< HEAD
 Base URL: `http://localhost:5000/api/`
 
 ### Routes Authentification
@@ -104,6 +105,24 @@ Le serveur démarre sur `http://localhost:5000`
 
 3. Architecture
 
+=======
+http://localhost:5000/api/
+
+POST /auth/register
+POST /auth/confirm-email
+POST /auth/login
+POST /auth/refresh-token
+POST /auth/logout
+POST /auth/forgot-password
+POST /auth/reset-password
+PATCH /auth/change-password
+
+Le serveur démarre sur `http://localhost:5000`
+
+
+3. Architecture
+
+>>>>>>> a5c5062645d865a6df082b69e156255244ca1bea
 trio-nova-api/
 ├── config/
 │   ├── database.js      # Connexions MySQL et MongoDB
