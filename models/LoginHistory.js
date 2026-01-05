@@ -15,8 +15,7 @@ const loginHistorySchema = new mongoose.Schema({
   },
   loginAt: {
     type: Date,
-    default: Date.now,
-    index: true
+    default: Date.now
   },
   success: {
     type: Boolean,

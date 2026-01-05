@@ -19,8 +19,7 @@ const tokenSchema = new mongoose.Schema({
   },
   expiresAt: {
     type: Date,
-    required: true,
-    index: { expireAfterSeconds: 0 } // TTL index pour suppression automatique
+    required: true
   },
   createdAt: {
     type: Date,
@@ -33,7 +32,8 @@ const tokenSchema = new mongoose.Schema({
 // Index composé pour les requêtes fréquentes
 tokenSchema.index({ token: 1, type: 1 });
 tokenSchema.index({ userId: 1, type: 1 });
-tokenSchema.index({ expiresAt: 1 });
+// TTL index pour suppression automatique après expiration
+tokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 const Token = mongoose.model('Token', tokenSchema);
 
