@@ -1,24 +1,26 @@
-1) TrioNova Backend API 
+# TrioNova Backend API
 
-API Backend REST pour la refonte de la plateforme e-commerce AltheSystems 
+API Backend REST pour la refonte de la plateforme e-commerce AltheSystems
 
-Guide d'installation :
+## Guide d'installation
 
-Prérequis
+### Prérequis
 - Node.js
 - MySQL (phpmyadmin) 
 - MongoDB Atlas (cluster voir lien dans le fichier .env)
 - npm 
 
-Étapes d'installation
+### Étapes d'installation
 
-a. Cloner le projet et installer les dépendances
-ctrl + %ù
+#### a. Cloner le projet et installer les dépendances
+```bash
 npm install
+```
 
-
-b.Configurer les variables d'environnement
+#### b. Configurer les variables d'environnement
 Créer un fichier `.env` à la racine du projet avec les variables suivantes :
+
+```env
 # MySQL Configuration
 DB_HOST=localhost
 DB_USER=root
@@ -40,31 +42,38 @@ EMAIL_PASSWORD=5af72577da5741
 EMAIL_FROM=noreply@trionova.com
 
 PORT=5000
+```
 
+#### c. Configurer les bases de données
 
-c. Configurer les bases de données
-
-MySQL :
+**MySQL :**
+```sql
 CREATE DATABASE trio_nova_db;
+```
 
-
-MongoDB Atlas:
+**MongoDB Atlas:**
 - Créer un cluster sur [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
 - Créer un utilisateur avec les permissions nécessaires
 - Ajouter votre IP dans la whitelist (Network Access)
 - Copier l'URI de connexion et l'ajouter dans `.env` :
 
+  ```
   MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/trio_nova_db?retryWrites=true&w=majority
+  ```
 
-d. Démarrer le serveur
-Ouvrir le terminal
+#### d. Démarrer le serveur
+
+**Mode développement :**
+```bash
 npm run dev
+```
 
-Mode production
+**Mode production :**
+```bash
 npm start
+```
 
-
-2. Routes API - Collection Postman
+## Routes API - Collection Postman
 
 Base URL: `http://localhost:5000/api/`
 
@@ -99,11 +108,33 @@ Base URL: `http://localhost:5000/api/`
 - PATCH /users/admin/users/:id/status
 - DELETE /users/admin/users/:id
 
+### Routes Produits (Publiques)
+- GET /products (avec pagination, filtres: categoryId, status, search, inStock)
+- GET /products/:slug
+
+### Routes Admin Produits (Authentifié + Admin)
+- GET /products/admin/products
+- GET /products/admin/products/:id
+- POST /products/admin/products
+- PATCH /products/admin/products/:id
+- DELETE /products/admin/products/:id
+- POST /products/admin/products/:id/images
+- PATCH /products/admin/products/:id/images/:imageId
+- PATCH /products/admin/products/:id/images/:imageId/primary
+- DELETE /products/admin/products/:id/images/:imageId
+
+### Routes Admin Catégories (Authentifié + Admin)
+- GET /products/admin/categories
+- GET /products/admin/categories/:id
+- POST /products/admin/categories
+- PATCH /products/admin/categories/:id
+- DELETE /products/admin/categories/:id
+
 Le serveur démarre sur `http://localhost:5000`
 
+## Architecture
 
-3. Architecture
-
+```
 trio-nova-api/
 ├── config/
 │   ├── database.js      # Connexions MySQL et MongoDB
@@ -114,20 +145,28 @@ trio-nova-api/
 │   ├── userRepository.js          # Accès DB MySQL (users)
 │   ├── tokenRepository.js         # Accès DB MongoDB (tokens)
 │   ├── loginHistoryRepository.js  # Accès DB MongoDB (historique connexions)
-│   ├── addressRepository.js       # Accès DB MongoDB (adresses)
-│   └── paymentMethodRepository.js # Accès DB MongoDB (méthodes paiement)
+│   ├── addressRepository.js       # Accès DB MySQL (adresses)
+│   ├── paymentMethodRepository.js # Accès DB MySQL (méthodes paiement)
+│   ├── productRepository.js      # Accès DB MySQL (produits)
+│   ├── categoryRepository.js      # Accès DB MySQL (catégories)
+│   └── productImageRepository.js # Accès DB MongoDB (images produits)
 │
 ├── services/
 │   ├── authService.js        # Logique métier authentification
 │   ├── userService.js        # Logique métier utilisateurs
+│   ├── productService.js     # Logique métier produits
+│   ├── categoryService.js    # Logique métier catégories
 │   ├── jwtService.js         # Génération/vérification JWT
 │   ├── passwordService.js    # Hashage et validation mot de passe
 │   └── emailService.js       # Envoi emails (confirmation, reset)
 │
 ├── controllers/
-│   ├── authController.js     # Contrôleurs authentification
-│   ├── userController.js     # Contrôleurs utilisateur
-│   └── adminController.js    # Contrôleurs admin
+│   ├── authController.js         # Contrôleurs authentification
+│   ├── userController.js         # Contrôleurs utilisateur
+│   ├── adminController.js        # Contrôleurs admin
+│   ├── productController.js      # Contrôleurs produits (public)
+│   ├── adminProductController.js # Contrôleurs produits (admin)
+│   └── adminCategoryController.js # Contrôleurs catégories (admin)
 │
 ├── middlewares/
 │   ├── authMiddleware.js         # Protection JWT
@@ -137,37 +176,44 @@ trio-nova-api/
 │
 ├── routes/
 │   ├── authRoutes.js         # Routes authentification
-│   └── userRoutes.js          # Routes utilisateurs et admin
+│   ├── userRoutes.js          # Routes utilisateurs et admin
+│   └── productRoutes.js      # Routes produits et catégories
 │
 ├── validators/
 │   ├── authValidator.js       # Schémas validation auth
-│   └── userValidator.js      # Schémas validation users
+│   ├── userValidator.js      # Schémas validation users
+│   ├── productValidator.js   # Schémas validation produits
+│   └── categoryValidator.js  # Schémas validation catégories
 │
 ├── models/
 │   ├── Token.js              # Modèle Token (MongoDB)
 │   ├── LoginHistory.js       # Modèle historique connexions (MongoDB)
-│   ├── PaymentMethod.js      # Modèle méthodes paiement (MongoDB)
-│   └── Address.js            # Modèle adresses (MongoDB)
+│   └── ProductImage.js       # Modèle images produits (MongoDB)
 │
 ├── server.js                 # Point d'entrée Express
 └── package.json
+```
 
-5. Flux de données
+## Flux de données
 
-Client → Routes * → Middlewares * (validation/auth) * → Controllers * → Services * → Repositories * → Database
+```
+Client → Routes → Middlewares (validation/auth) → Controllers → Services → Repositories → Database
                                                                                     ↓
                                                                           Réponse JSON 
+```
 
-Routes* : Définition des endpoints et association middlewares
-Controllers* : Gestion requêtes/réponses HTTP
-Services* : Logique métier et orchestration
-Repositories* : Accès aux bases de données 
-Middlewares* : Validation, authentification, gestion erreurs
-Validators* : Schémas de validation des données
+- **Routes** : Définition des endpoints et association middlewares
+- **Controllers** : Gestion requêtes/réponses HTTP
+- **Services** : Logique métier et orchestration
+- **Repositories** : Accès aux bases de données 
+- **Middlewares** : Validation, authentification, gestion erreurs
+- **Validators** : Schémas de validation des données
 
-Important !
+## Important !
+
 - Les tokens de confirmation email expirent après 24h
 - Les tokens de réinitialisation expirent après 1h
 - Les access tokens expirent après 15 minutes
 - Les refresh tokens expirent après 7 jours
 - Le changement de mot de passe invalide tous les refresh tokens (force nouvelle connexion)
+

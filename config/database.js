@@ -168,6 +168,50 @@ export const initializeDatabases = async () => {
         INDEX idx_user_default (user_id, is_default)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
+
+    // Création de la table categories
+    await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS categories (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        description TEXT,
+        display_order INT DEFAULT 0,
+        status ENUM('active', 'inactive') DEFAULT 'active',
+        slug VARCHAR(200) UNIQUE NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_slug (slug),
+        INDEX idx_status (status),
+        INDEX idx_display_order (display_order)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Création de la table products
+    await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS products (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(200) NOT NULL,
+        description TEXT NOT NULL,
+        technical_specs JSON,
+        price_ht DECIMAL(10, 2) NOT NULL,
+        tva DECIMAL(5, 2) DEFAULT 20.00,
+        price_ttc DECIMAL(10, 2) NOT NULL,
+        stock INT DEFAULT 0,
+        priority INT DEFAULT 0,
+        status ENUM('active', 'inactive', 'draft') DEFAULT 'active',
+        slug VARCHAR(200) UNIQUE NOT NULL,
+        category_id INT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
+        INDEX idx_slug (slug),
+        INDEX idx_status (status),
+        INDEX idx_category_id (category_id),
+        INDEX idx_priority (priority),
+        INDEX idx_stock (stock),
+        INDEX idx_status_priority_stock (status, priority DESC, stock)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
     console.log('✅ MySQL database initialized');
   } catch (error) {
     console.error('❌ MySQL initialization error:', error.message);
@@ -178,14 +222,29 @@ export const initializeDatabases = async () => {
     // MongoDB - Connexion
     const mongoConnection = await connectMongoDB();
     const dbName = mongoConnection.db.databaseName;
-    
-    // Charger les modèles Mongoose (seulement Token et LoginHistory)
+  
     await import('../models/Token.js');
     await import('../models/LoginHistory.js');
+    await import('../models/ProductImage.js');
     
     console.log(`✅ MongoDB connected (database: ${dbName})`);
   } catch (error) {
     console.error('❌ MongoDB connection error:', error.message);
+    if (error.message.includes('whitelist') || error.message.includes('IP')) {
+      console.error('\n⚠️  SOLUTION: Ajoutez votre IP actuelle à la whitelist MongoDB Atlas:');
+      console.error('   1. Connectez-vous à https://cloud.mongodb.com/');
+      console.error('   2. Allez dans "Network Access"');
+      console.error('   3. Cliquez sur "Add IP Address"');
+      console.error('   4. Ajoutez votre IP actuelle ou utilisez "0.0.0.0/0" pour autoriser toutes les IPs (développement uniquement)');
+      console.error('   5. Attendez quelques minutes que les changements soient appliqués\n');
+    }
+    
+    // En développement, on peut continuer sans MongoDB (mais certaines fonctionnalités ne fonctionneront pas)
+    if (process.env.NODE_ENV === 'development' && process.env.ALLOW_NO_MONGODB === 'true') {
+      console.warn('⚠️  Mode développement: Le serveur continue sans MongoDB (fonctionnalités limitées)');
+      return;
+    }
+    
     throw error;
   }
 };
