@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { initializeDatabases } from './config/database.js';
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import productRoutes from './routes/productRoutes.js';
 import { errorHandler, notFoundHandler } from './middlewares/errorMiddleware.js';
 
 dotenv.config();
@@ -45,6 +46,7 @@ app.get('/health', (req, res) => {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/products', productRoutes);
 
 // Gestion des erreurs
 app.use(notFoundHandler);
