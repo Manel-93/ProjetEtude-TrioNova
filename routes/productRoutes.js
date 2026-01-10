@@ -2,6 +2,8 @@ import express from 'express';
 import { ProductController } from '../controllers/productController.js';
 import { AdminProductController } from '../controllers/adminProductController.js';
 import { AdminCategoryController } from '../controllers/adminCategoryController.js';
+import { SearchController } from '../controllers/searchController.js';
+import { AdminSearchController } from '../controllers/adminSearchController.js';
 import { authenticate } from '../middlewares/authMiddleware.js';
 import { isAdmin } from '../middlewares/adminMiddleware.js';
 import { validate } from '../middlewares/validationMiddleware.js';
@@ -20,6 +22,11 @@ const router = express.Router();
 const productController = new ProductController();
 const adminProductController = new AdminProductController();
 const adminCategoryController = new AdminCategoryController();
+const searchController = new SearchController();
+const adminSearchController = new AdminSearchController();
+
+// Route de recherche (doit être avant /:slug pour éviter les conflits)
+router.get('/search', searchController.search);
 
 // Routes publiques produits (doivent être avant les routes admin pour éviter les conflits)
 router.get('/', productController.getAllProducts);
@@ -44,6 +51,9 @@ router.get('/admin/categories/:id', authenticate, isAdmin, adminCategoryControll
 router.post('/admin/categories', authenticate, isAdmin, validate(createCategorySchema), adminCategoryController.createCategory);
 router.patch('/admin/categories/:id', authenticate, isAdmin, validate(updateCategorySchema), adminCategoryController.updateCategory);
 router.delete('/admin/categories/:id', authenticate, isAdmin, adminCategoryController.deleteCategory);
+
+// Routes admin Elasticsearch
+router.post('/admin/search/reindex', authenticate, isAdmin, adminSearchController.reindexAll);
 
 export default router;
 
