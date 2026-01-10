@@ -247,5 +247,36 @@ export const initializeDatabases = async () => {
     
     throw error;
   }
+
+  // Initialisation Elasticsearch (optionnel)
+  if (process.env.ELASTICSEARCH_NODE && process.env.ELASTICSEARCH_NODE !== 'false') {
+    try {
+      const { initializeElasticsearchIndex, testElasticsearchConnection } = await import('./elasticsearch.js');
+      await testElasticsearchConnection();
+      await initializeElasticsearchIndex();
+      console.log('✅ Elasticsearch initialized and connected');
+    } catch (error) {
+      console.error('❌ Elasticsearch initialization error:', error.message);
+      
+      if (process.env.ALLOW_NO_ELASTICSEARCH === 'true') {
+        console.warn('⚠️  Continuing without Elasticsearch (search functionality will be limited)');
+        console.error('\n📋 Pour démarrer Elasticsearch:');
+        console.error('   1. Avec Docker (recommandé):');
+        console.error('      docker run -d --name elasticsearch -p 9200:9200 -p 9300:9300 \\');
+        console.error('        -e "discovery.type=single-node" \\');
+        console.error('        -e "xpack.security.enabled=false" \\');
+        console.error('        elasticsearch:8.11.0');
+        console.error('   2. Vérifier que Elasticsearch fonctionne:');
+        console.error('      curl http://localhost:9200');
+        console.error('   3. Redémarrer le serveur après le démarrage d\'Elasticsearch\n');
+      } else {
+        console.error('⚠️  Elasticsearch is optional. Set ALLOW_NO_ELASTICSEARCH=true in .env to continue without it.');
+        console.error('\n📋 Pour démarrer Elasticsearch rapidement:');
+        console.error('   docker run -d --name elasticsearch -p 9200:9200 -e "discovery.type=single-node" -e "xpack.security.enabled=false" elasticsearch:8.11.0\n');
+      }
+    }
+  } else {
+    console.log('ℹ️  Elasticsearch not configured (ELASTICSEARCH_NODE not set or is false)');
+  }
 };
 
