@@ -1,12 +1,14 @@
 import { ProductRepository } from '../repositories/productRepository.js';
 import { ProductImageRepository } from '../repositories/productImageRepository.js';
 import { CategoryRepository } from '../repositories/categoryRepository.js';
+import { ElasticsearchService } from './elasticsearchService.js';
 
 export class ProductService {
   constructor() {
     this.productRepository = new ProductRepository();
     this.productImageRepository = new ProductImageRepository();
     this.categoryRepository = new CategoryRepository();
+    this.elasticsearchService = new ElasticsearchService();
   }
 
   async getAllProducts(filters, pagination) {
@@ -91,7 +93,14 @@ export class ProductService {
       await Promise.all(imagePromises);
     }
     
-    return await this.getProductById(product.id);
+    const fullProduct = await this.getProductById(product.id);
+    
+    // Synchronisation Elasticsearch (en arrière-plan, ne bloque pas la réponse)
+    this.elasticsearchService.indexProduct(product.id).catch(err => {
+      console.error(`⚠️  Failed to index product ${product.id} in Elasticsearch:`, err.message);
+    });
+    
+    return fullProduct;
   }
 
   async updateProduct(id, productData) {
@@ -115,7 +124,14 @@ export class ProductService {
     }
     
     const updatedProduct = await this.productRepository.update(id, productData);
-    return await this.getProductById(updatedProduct.id);
+    const fullProduct = await this.getProductById(updatedProduct.id);
+    
+    // Synchronisation Elasticsearch (en arrière-plan)
+    this.elasticsearchService.indexProduct(id).catch(err => {
+      console.error(`⚠️  Failed to update product ${id} in Elasticsearch:`, err.message);
+    });
+    
+    return fullProduct;
   }
 
   async deleteProduct(id) {
@@ -126,6 +142,11 @@ export class ProductService {
     
     await this.productImageRepository.deleteByProductId(id);
     await this.productRepository.delete(id);
+    
+    // Synchronisation Elasticsearch (en arrière-plan)
+    this.elasticsearchService.deleteProduct(id).catch(err => {
+      console.error(`⚠️  Failed to delete product ${id} from Elasticsearch:`, err.message);
+    });
     
     return { message: 'Produit supprimé avec succès' };
   }
