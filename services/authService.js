@@ -86,7 +86,7 @@ export class AuthService {
     return { message: 'Email confirmé avec succès' };
   }
 
-  async login(email, password, ipAddress = null, userAgent = null) {
+  async login(email, password, ipAddress = null, userAgent = null, guestToken = null) {
     // Trouver l'utilisateur
     const user = await this.userRepository.findByEmail(email);
     
@@ -148,6 +148,20 @@ export class AuthService {
       expiresAt
     });
 
+    // Synchroniser le panier invité avec le panier utilisateur (en arrière-plan)
+    let cartSynced = false;
+    if (guestToken) {
+      try {
+        const { CartService } = await import('./cartService.js');
+        const cartService = new CartService();
+        await cartService.syncGuestCartToUser(guestToken, user.id);
+        cartSynced = true;
+      } catch (error) {
+        // Ne pas faire échouer la connexion si la synchronisation du panier échoue
+        console.warn('⚠️  Échec de la synchronisation du panier lors de la connexion:', error.message);
+      }
+    }
+
     // Logger la connexion réussie
     await logLogin(true);
 
@@ -159,7 +173,8 @@ export class AuthService {
         email: user.email,
         firstName: user.first_name,
         lastName: user.last_name
-      }
+      },
+      cartSynced
     };
   }
 

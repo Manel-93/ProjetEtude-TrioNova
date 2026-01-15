@@ -36,7 +36,8 @@ export class AuthController {
     try {
       const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
       const userAgent = req.get('user-agent') || 'unknown';
-      const result = await this.authService.login(req.body.email, req.body.password, ipAddress, userAgent);
+      const guestToken = req.headers['x-guest-token'] || req.headers['guest-token'] || req.body.guestToken || null;
+      const result = await this.authService.login(req.body.email, req.body.password, ipAddress, userAgent, guestToken);
       res.status(200).json({
         success: true,
         data: result

@@ -52,15 +52,13 @@ export class ElasticsearchService {
           order: img.order || 0
         }))
       };
-
-      // Elasticsearch v8 : utiliser 'document' pour indexer un document
       await this.client.index({
         index: INDEX_NAME,
         id: product.id.toString(),
         document: document
       });
 
-      // Rafraîchir l'index pour que les documents soient immédiatement disponibles
+     
       await this.client.indices.refresh({ index: INDEX_NAME });
 
       return true;
@@ -91,12 +89,12 @@ export class ElasticsearchService {
   // Recherche avancée
   async search(queryParams) {
     const {
-      q = '', // Texte de recherche
+      q = '', 
       minPrice,
       maxPrice,
       categoryId,
       inStock,
-      sortBy = 'priority', // priority, price_asc, price_desc, newest, stock
+      sortBy = 'priority', 
       page = 1,
       limit = 20
     } = queryParams;
@@ -107,7 +105,6 @@ export class ElasticsearchService {
     const must = [];
     const filter = [];
 
-    // Recherche texte sur name, description, technicalSpecs
     if (q && q.trim()) {
       must.push({
         multi_match: {
@@ -172,7 +169,6 @@ export class ElasticsearchService {
         break;
       case 'priority':
       default:
-        // Par défaut : priorité décroissante, puis produits en stock, puis prix
         sort = [
           { priority: { order: 'desc' } },
           {
@@ -208,18 +204,18 @@ export class ElasticsearchService {
       };
 
       const startTime = Date.now();
-      // Elasticsearch v8 : utiliser body pour la requête complète
+      
       const response = await this.client.search({
         index: INDEX_NAME,
         body: searchBody
       });
       const duration = Date.now() - startTime;
 
-      // Formater les résultats (Elasticsearch v8 retourne response.hits directement)
+      
       const hits = response.hits || {};
       const hitList = hits.hits || [];
       const totalObj = hits.total || {};
-      // Gérer les deux formats possibles : { value: X } ou directement X
+      
       const totalValue = typeof totalObj === 'object' && totalObj.value !== undefined 
         ? totalObj.value 
         : (typeof totalObj === 'number' ? totalObj : 0);
@@ -274,7 +270,7 @@ export class ElasticsearchService {
     }
   }
 
-  // Réindexer tous les produits (utile pour la migration initiale)
+  // Réindexer tous les produits 
   async reindexAllProducts() {
     try {
       console.log('🔄 Starting full product reindexing...');
