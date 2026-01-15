@@ -212,6 +212,68 @@ export const initializeDatabases = async () => {
         INDEX idx_status_priority_stock (status, priority DESC, stock)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
+
+    // Création de la table carts
+    await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS carts (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NULL,
+        guest_token VARCHAR(255) NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_user_id (user_id),
+        INDEX idx_guest_token (guest_token),
+        UNIQUE KEY unique_user_cart (user_id),
+        UNIQUE KEY unique_guest_cart (guest_token)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+    
+    // Migration : Supprimer les anciennes contraintes UNIQUE si elles existent et recréer
+    try {
+      const [constraints] = await mysqlPool.execute(`
+        SELECT CONSTRAINT_NAME 
+        FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS 
+        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'carts' AND CONSTRAINT_TYPE = 'UNIQUE'
+      `, [process.env.MYSQL_DATABASE || 'trio_nova_db']);
+      
+      // Si les contraintes n'existent pas, les ajouter
+      const constraintNames = constraints.map(c => c.CONSTRAINT_NAME);
+      
+      if (!constraintNames.includes('unique_user_cart')) {
+        await mysqlPool.execute(`
+          ALTER TABLE carts 
+          ADD UNIQUE KEY unique_user_cart (user_id)
+        `);
+      }
+      
+      if (!constraintNames.includes('unique_guest_cart')) {
+        await mysqlPool.execute(`
+          ALTER TABLE carts 
+          ADD UNIQUE KEY unique_guest_cart (guest_token)
+        `);
+      }
+    } catch (error) {
+      console.warn('Migration carts warning:', error.message);
+    }
+
+    // Création de la table cart_items
+    await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS cart_items (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        cart_id INT NOT NULL,
+        product_id INT NOT NULL,
+        quantity INT NOT NULL DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE CASCADE,
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+        INDEX idx_cart_id (cart_id),
+        INDEX idx_product_id (product_id),
+        UNIQUE KEY unique_cart_product (cart_id, product_id),
+        CHECK (quantity > 0)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
     console.log('✅ MySQL database initialized');
   } catch (error) {
     console.error('❌ MySQL initialization error:', error.message);
