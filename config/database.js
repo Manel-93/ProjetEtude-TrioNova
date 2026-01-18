@@ -274,6 +274,29 @@ export const initializeDatabases = async () => {
         CHECK (quantity > 0)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
+
+    // Création de la table payments
+    await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS payments (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NULL,
+        cart_id INT NULL,
+        stripe_payment_intent_id VARCHAR(255) UNIQUE NOT NULL,
+        amount DECIMAL(10, 2) NOT NULL,
+        currency VARCHAR(3) DEFAULT 'EUR',
+        status ENUM('pending', 'processing', 'succeeded', 'failed', 'canceled', 'refunded') DEFAULT 'pending',
+        metadata JSON,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+        FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE SET NULL,
+        INDEX idx_user_id (user_id),
+        INDEX idx_cart_id (cart_id),
+        INDEX idx_stripe_payment_intent_id (stripe_payment_intent_id),
+        INDEX idx_status (status),
+        INDEX idx_created_at (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
     console.log('✅ MySQL database initialized');
   } catch (error) {
     console.error('❌ MySQL initialization error:', error.message);

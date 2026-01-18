@@ -49,6 +49,10 @@ ELASTICSEARCH_INDEX=products
 ELASTICSEARCH_USERNAME=  # Optionnel (si authentification requise)
 ELASTICSEARCH_PASSWORD=  # Optionnel (si authentification requise)
 ALLOW_NO_ELASTICSEARCH=true  # Permet de continuer sans Elasticsearch en développement
+
+# Stripe Configuration (paiements)
+STRIPE_SECRET_KEY=sk_test_...  # Clé secrète Stripe (récupérer depuis https://dashboard.stripe.com)
+STRIPE_WEBHOOK_SECRET=whsec_...  # Secret webhook Stripe (récupérer depuis Dashboard → Webhooks)
 ```
 
 #### c. Configurer les bases de données
@@ -156,10 +160,18 @@ Base URL: `http://localhost:5000/api/`
 
 ### Routes Recherche Elasticsearch (Admin)
 - POST /products/admin/search/reindex (réindexer tous les produits)
-- GET /api/products/search
-- GET {{baseUrl}}/products/search?q=stéthoscope&page=1&limit=20
-- GET {{baseUrl}}/products/search?q=&sortBy=price_desc&page=1&limit=20
-- GET {{baseUrl}}/products/search?q=médical&categoryId=1&minPrice=20&maxPrice=200&inStock=true&sortBy=price_asc&page=1&limit=20
+
+### Routes Panier (Publiques - Invité ou Utilisateur)
+- GET /cart (obtenir le panier)
+- GET /cart/validate (valider le stock avant checkout)
+- POST /cart/add (ajouter un produit)
+- PATCH /cart/update (modifier la quantité d'un produit)
+- DELETE /cart/remove (supprimer un produit)
+
+### Routes Paiement Stripe (Publiques)
+- POST /payments/create-intent (créer un PaymentIntent - invité ou utilisateur)
+- POST /payments/webhook (webhook Stripe pour les événements de paiement)
+
 
 Le serveur démarre sur `http://localhost:5000`
 
@@ -170,6 +182,7 @@ trio-nova-api/
 ├── config/
 │   ├── database.js         # Connexions MySQL et MongoDB
 │   ├── elasticsearch.js    # Configuration Elasticsearch
+│   ├── stripe.js           # Configuration Stripe (paiements)
 │   ├── jwt.js              # Configuration JWT
 │   └── email.js            # Configuration email (Nodemailer)
 │
@@ -182,7 +195,8 @@ trio-nova-api/
 │   ├── productRepository.js      # Accès DB MySQL (produits)
 │   ├── categoryRepository.js      # Accès DB MySQL (catégories)
 │   ├── productImageRepository.js # Accès DB MongoDB (images produits)
-│   └── cartRepository.js          # Accès DB MySQL (paniers et items)
+│   ├── cartRepository.js          # Accès DB MySQL (paniers et items)
+│   └── paymentRepository.js        # Accès DB MySQL (paiements)
 │
 ├── services/
 │   ├── authService.js           # Logique métier authentification
@@ -190,6 +204,7 @@ trio-nova-api/
 │   ├── productService.js        # Logique métier produits
 │   ├── categoryService.js       # Logique métier catégories
 │   ├── cartService.js           # Logique métier panier (sync invité→utilisateur)
+│   ├── stripeService.js         # Logique métier paiements Stripe (PaymentIntent, webhooks)
 │   ├── elasticsearchService.js  # Recherche avancée Elasticsearch
 │   ├── jwtService.js            # Génération/vérification JWT
 │   ├── passwordService.js       # Hashage et validation mot de passe
@@ -203,6 +218,7 @@ trio-nova-api/
 │   ├── adminProductController.js  # Contrôleurs produits (admin)
 │   ├── adminCategoryController.js # Contrôleurs catégories (admin)
 │   ├── cartController.js          # Contrôleurs panier (invité + utilisateur)
+│   ├── paymentController.js       # Contrôleurs paiements Stripe
 │   ├── searchController.js        # Contrôleurs recherche (public)
 │   └── adminSearchController.js   # Contrôleurs recherche (admin)
 │
@@ -210,6 +226,7 @@ trio-nova-api/
 │   ├── authMiddleware.js         # Protection JWT
 │   ├── adminMiddleware.js         # Vérification rôle admin
 │   ├── cartMiddleware.js          # Gestion guest token pour panier invité
+│   ├── stripeWebhookMiddleware.js # Vérification signature webhooks Stripe
 │   ├── validationMiddleware.js    # Validation Joi
 │   └── errorMiddleware.js         # Gestion centralisée erreurs
 │
@@ -217,7 +234,8 @@ trio-nova-api/
 │   ├── authRoutes.js         # Routes authentification
 │   ├── userRoutes.js          # Routes utilisateurs et admin
 │   ├── productRoutes.js      # Routes produits et catégories
-│   └── cartRoutes.js          # Routes panier (invité + utilisateur)
+│   ├── cartRoutes.js          # Routes panier (invité + utilisateur)
+│   └── paymentRoutes.js       # Routes paiements Stripe
 │
 ├── validators/
 │   ├── authValidator.js       # Schémas validation auth
@@ -246,6 +264,39 @@ Client → Routes → Middlewares (validation/auth) → Controllers → Services
 - **Repositories** : Accès aux bases de données 
 - **Middlewares** : Validation, authentification, gestion erreurs
 - **Validators** : Schémas de validation des données
+
+
+### Configuration STRIPE
+
+1. **Créer un compte Stripe** : https://stripe.com
+2. **Récupérer les clés API** :
+   - Clé secrète (SK) : Dashboard → Developers → API keys → Secret key
+   - Webhook secret : Dashboard → Developers → Webhooks → Ajouter endpoint → Copier le "Signing secret"
+
+3. **Configurer les variables d'environnement** dans `.env` :
+   ```env
+   # Stripe Configuration
+   STRIPE_SECRET_KEY=sk_test_...  # Clé secrète Stripe (test ou live)
+   STRIPE_WEBHOOK_SECRET=whsec_... # Secret webhook Stripe
+   ```
+
+4. **Configurer le webhook Stripe** :
+   - URL : `https://votre-domaine.com/api/payments/webhook`
+   - Événements à écouter :
+     - `payment_intent.succeeded`
+     - `payment_intent.payment_failed`
+     - `payment_intent.canceled`
+     - `payment_intent.processing`
+     - `charge.refunded`
+
+### Statuts de paiement
+
+- `pending` : Paiement en attente
+- `processing` : Paiement en cours de traitement
+- `succeeded` : Paiement réussi
+- `failed` : Paiement échoué
+- `canceled` : Paiement annulé
+- `refunded` : Paiement remboursé
 
 
 ## Important !
