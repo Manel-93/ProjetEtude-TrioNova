@@ -33,8 +33,19 @@ export class PaymentController {
     try {
       const event = req.stripeEvent;
 
+      console.log('🔔 Webhook received:', {
+        type: event.type,
+        id: event.id,
+        paymentIntentId: event.data?.object?.id
+      });
+
       // Traiter l'événement
       const result = await this.stripeService.handleWebhookEvent(event);
+      
+      console.log('✅ Webhook processed:', {
+        type: event.type,
+        processed: result.processed
+      });
 
       // Répondre rapidement à Stripe (dans les 3 secondes)
       res.status(200).json({

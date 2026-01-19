@@ -172,6 +172,15 @@ Base URL: `http://localhost:5000/api/`
 - POST /payments/create-intent (créer un PaymentIntent - invité ou utilisateur)
 - POST /payments/webhook (webhook Stripe pour les événements de paiement)
 
+### Routes Commandes (Authentifié)
+- GET /orders (récupérer mes commandes)
+- GET /orders/:id (récupérer une commande par ID)
+- GET /orders/invoices/:id/pdf (télécharger le PDF d'une facture)
+
+### Routes Admin Commandes (Authentifié + Admin)
+- GET /orders/admin/orders (récupérer toutes les commandes)
+- POST /orders/admin/orders/:id/status (mettre à jour le statut d'une commande)
+
 
 Le serveur démarre sur `http://localhost:5000`
 
@@ -196,7 +205,9 @@ trio-nova-api/
 │   ├── categoryRepository.js      # Accès DB MySQL (catégories)
 │   ├── productImageRepository.js # Accès DB MongoDB (images produits)
 │   ├── cartRepository.js          # Accès DB MySQL (paniers et items)
-│   └── paymentRepository.js        # Accès DB MySQL (paiements)
+│   ├── paymentRepository.js        # Accès DB MySQL (paiements)
+│   ├── orderRepository.js         # Accès DB MySQL (commandes)
+│   └── invoiceRepository.js        # Accès DB MySQL (factures et avoirs)
 │
 ├── services/
 │   ├── authService.js           # Logique métier authentification
@@ -205,6 +216,8 @@ trio-nova-api/
 │   ├── categoryService.js       # Logique métier catégories
 │   ├── cartService.js           # Logique métier panier (sync invité→utilisateur)
 │   ├── stripeService.js         # Logique métier paiements Stripe (PaymentIntent, webhooks)
+│   ├── orderService.js           # Logique métier commandes
+│   ├── invoiceService.js         # Logique métier factures (génération PDF)
 │   ├── elasticsearchService.js  # Recherche avancée Elasticsearch
 │   ├── jwtService.js            # Génération/vérification JWT
 │   ├── passwordService.js       # Hashage et validation mot de passe
@@ -219,6 +232,8 @@ trio-nova-api/
 │   ├── adminCategoryController.js # Contrôleurs catégories (admin)
 │   ├── cartController.js          # Contrôleurs panier (invité + utilisateur)
 │   ├── paymentController.js       # Contrôleurs paiements Stripe
+│   ├── orderController.js         # Contrôleurs commandes
+│   ├── invoiceController.js       # Contrôleurs factures
 │   ├── searchController.js        # Contrôleurs recherche (public)
 │   └── adminSearchController.js   # Contrôleurs recherche (admin)
 │
@@ -235,14 +250,16 @@ trio-nova-api/
 │   ├── userRoutes.js          # Routes utilisateurs et admin
 │   ├── productRoutes.js      # Routes produits et catégories
 │   ├── cartRoutes.js          # Routes panier (invité + utilisateur)
-│   └── paymentRoutes.js       # Routes paiements Stripe
+│   ├── paymentRoutes.js       # Routes paiements Stripe
+│   └── orderRoutes.js          # Routes commandes et factures
 │
 ├── validators/
 │   ├── authValidator.js       # Schémas validation auth
 │   ├── userValidator.js      # Schémas validation users
 │   ├── productValidator.js   # Schémas validation produits
 │   ├── categoryValidator.js  # Schémas validation catégories
-│   └── cartValidator.js       # Schémas validation panier
+│   ├── cartValidator.js       # Schémas validation panier
+│   └── orderValidator.js      # Schémas validation commandes
 │
 ├── models/
 │   ├── Token.js              # Modèle Token (MongoDB)
@@ -297,6 +314,28 @@ Client → Routes → Middlewares (validation/auth) → Controllers → Services
 - `failed` : Paiement échoué
 - `canceled` : Paiement annulé
 - `refunded` : Paiement remboursé
+
+### Statuts de commande
+
+- `pending` : Commande en attente
+- `processing` : Commande en cours de traitement
+- `completed` : Commande terminée
+- `canceled` : Commande annulée
+
+### Statuts de facture
+
+- `draft` : Brouillon
+- `issued` : Facture émise
+- `paid` : Facture payée
+- `canceled` : Facture annulée (avec avoir généré)
+
+### Fonctionnalités Commandes et Facturation
+
+- **Création automatique de commande** : Après un paiement réussi (webhook Stripe)
+- **Génération automatique de facture** : Une facture est créée automatiquement pour chaque commande
+- **Génération PDF** : Les factures sont générées en PDF via PDFKit
+- **Avoir automatique** : Lors de l'annulation d'une commande, un avoir (credit note) est généré automatiquement
+- **Historique des statuts** : Chaque changement de statut de commande est enregistré avec l'utilisateur et la date
 
 
 ## Important !

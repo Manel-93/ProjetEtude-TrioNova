@@ -1,12 +1,14 @@
 import { getStripeClient } from '../config/stripe.js';
 import { PaymentRepository } from '../repositories/paymentRepository.js';
 import { CartService } from './cartService.js';
+import { OrderService } from './orderService.js';
 
 export class StripeService {
   constructor() {
     this.stripe = getStripeClient();
     this.paymentRepository = new PaymentRepository();
     this.cartService = new CartService();
+    this.orderService = new OrderService();
   }
 
   // Créer un PaymentIntent
@@ -38,6 +40,13 @@ export class StripeService {
       });
 
       // Enregistrer le paiement en base de données
+      console.log('💳 [STRIPE SERVICE] Creating payment in database:', {
+        userId: userId || null,
+        cartId: cartData.cart.id,
+        stripePaymentIntentId: paymentIntent.id,
+        amount: cartData.total
+      });
+      
       const payment = await this.paymentRepository.create({
         userId: userId || null,
         cartId: cartData.cart.id,
@@ -55,6 +64,11 @@ export class StripeService {
           tva: cartData.tva,
           total: cartData.total
         }
+      });
+      
+      console.log('✅ [STRIPE SERVICE] Payment created in database:', {
+        paymentId: payment.id,
+        stripePaymentIntentId: payment.stripePaymentIntentId
       });
 
       return {
@@ -74,19 +88,129 @@ export class StripeService {
   async handleWebhookEvent(event) {
     try {
       const paymentIntentId = event.data.object.id;
+      console.log('🔍 Looking for payment with intent:', paymentIntentId);
+      
       let payment = await this.paymentRepository.findByPaymentIntentId(paymentIntentId);
-
-      // Si le paiement n'existe pas encore, le créer (cas rare)
-      if (!payment && event.type === 'payment_intent.created') {
+      
+      if (!payment) {
+        console.warn('⚠️ Payment not found for intent:', paymentIntentId);
+        console.log('📋 PaymentIntent metadata:', event.data.object.metadata);
+        
+        // Si le paiement n'existe pas, le créer depuis les metadata Stripe
+        // Ceci peut arriver si create-intent n'a pas réussi à enregistrer le paiement
         const paymentIntent = event.data.object;
+        const userIdFromMetadata = paymentIntent.metadata?.userId ? parseInt(paymentIntent.metadata.userId) : null;
+        const cartIdFromMetadata = paymentIntent.metadata?.cartId ? parseInt(paymentIntent.metadata.cartId) : null;
+        
+        console.log('🔧 Creating payment from webhook metadata:', {
+          userId: userIdFromMetadata,
+          cartId: cartIdFromMetadata,
+          amount: paymentIntent.amount / 100
+        });
+        
+        // Extraire les metadata complètes (cartItems, subtotal, etc.) si disponibles
+        let fullMetadata = {};
+        if (paymentIntent.metadata) {
+          // Les metadata Stripe sont des strings, il faut les parser si possible
+          try {
+            fullMetadata = typeof paymentIntent.metadata === 'object' 
+              ? paymentIntent.metadata 
+              : JSON.parse(paymentIntent.metadata);
+          } catch (e) {
+            // Si ce n'est pas du JSON, utiliser tel quel
+            fullMetadata = paymentIntent.metadata;
+          }
+        }
+        
+        // Si on n'a pas les cartItems dans les metadata, essayer de les récupérer du panier
+        // Note : Les metadata Stripe peuvent être vides si créées autrement
+        if (!fullMetadata.cartItems || fullMetadata.cartItems.length === 0) {
+          // Essayer de récupérer depuis cartId si disponible
+          if (cartIdFromMetadata) {
+            try {
+              const cartData = await this.cartService.getCart(userIdFromMetadata, paymentIntent.metadata?.guestToken || null);
+              if (cartData && cartData.items && cartData.items.length > 0) {
+                fullMetadata.cartItems = cartData.items.map(item => ({
+                  productId: item.productId,
+                  quantity: item.quantity,
+                  price: item.product?.priceTtc || 0
+                }));
+                fullMetadata.subtotal = cartData.subtotal || 0;
+                fullMetadata.tva = cartData.tva || 0;
+                fullMetadata.total = cartData.total || paymentIntent.amount / 100;
+                
+                console.log('✅ Cart data retrieved from cartId for metadata:', {
+                  cartId: cartIdFromMetadata,
+                  itemsCount: fullMetadata.cartItems.length,
+                  subtotal: fullMetadata.subtotal,
+                  tva: fullMetadata.tva,
+                  total: fullMetadata.total
+                });
+              }
+            } catch (error) {
+              console.warn('⚠️ Could not retrieve cart data from cartId:', error.message);
+            }
+          }
+          
+          // Si toujours pas de cartItems, essayer avec userId ou guestToken
+          if ((!fullMetadata.cartItems || fullMetadata.cartItems.length === 0) && 
+              (userIdFromMetadata || paymentIntent.metadata?.guestToken)) {
+            try {
+              const cartData = await this.cartService.getCart(userIdFromMetadata, paymentIntent.metadata?.guestToken || null);
+              if (cartData && cartData.items && cartData.items.length > 0) {
+                fullMetadata.cartItems = cartData.items.map(item => ({
+                  productId: item.productId,
+                  quantity: item.quantity,
+                  price: item.product?.priceTtc || 0
+                }));
+                fullMetadata.subtotal = cartData.subtotal || 0;
+                fullMetadata.tva = cartData.tva || 0;
+                fullMetadata.total = cartData.total || paymentIntent.amount / 100;
+                
+                console.log('✅ Cart data retrieved from user/guest for metadata:', {
+                  userId: userIdFromMetadata,
+                  guestToken: paymentIntent.metadata?.guestToken ? 'present' : 'null',
+                  itemsCount: fullMetadata.cartItems.length,
+                  subtotal: fullMetadata.subtotal,
+                  tva: fullMetadata.tva,
+                  total: fullMetadata.total
+                });
+              }
+            } catch (error) {
+              console.warn('⚠️ Could not retrieve cart data from user/guest:', error.message);
+            }
+          }
+        }
+        
+        // Si on n'a toujours pas les montants, utiliser les valeurs du PaymentIntent
+        if (!fullMetadata.subtotal && !fullMetadata.total) {
+          fullMetadata.total = paymentIntent.amount / 100;
+          fullMetadata.subtotal = paymentIntent.amount / 100 / 1.2; // Approximation si TVA = 20%
+          fullMetadata.tva = fullMetadata.total - fullMetadata.subtotal;
+        }
+        
         payment = await this.paymentRepository.create({
-          userId: paymentIntent.metadata?.userId ? parseInt(paymentIntent.metadata.userId) : null,
-          cartId: paymentIntent.metadata?.cartId ? parseInt(paymentIntent.metadata.cartId) : null,
+          userId: userIdFromMetadata,
+          cartId: cartIdFromMetadata,
           stripePaymentIntentId: paymentIntent.id,
           amount: paymentIntent.amount / 100, // Convertir de centimes en euros
           currency: paymentIntent.currency.toUpperCase(),
           status: this.mapStripeStatusToPaymentStatus(paymentIntent.status),
-          metadata: paymentIntent.metadata
+          metadata: fullMetadata
+        });
+        
+        console.log('✅ Payment created from webhook:', {
+          paymentId: payment.id,
+          userId: payment.userId,
+          cartId: payment.cartId
+        });
+      } else {
+        console.log('✅ Payment found:', {
+          id: payment.id,
+          userId: payment.userId,
+          cartId: payment.cartId,
+          status: payment.status,
+          hasMetadata: !!payment.metadata
         });
       }
 
@@ -94,15 +218,25 @@ export class StripeService {
       if (payment) {
         let newStatus = null;
         let metadata = null;
+        let shouldCreateOrder = false;
 
         switch (event.type) {
           case 'payment_intent.succeeded':
             newStatus = 'succeeded';
+            
+            // S'assurer que metadata est un objet
+            const paymentMetadata = payment.metadata || {};
+            const parsedMetadata = typeof paymentMetadata === 'string' 
+              ? JSON.parse(paymentMetadata) 
+              : paymentMetadata;
+            
             metadata = {
-              ...payment.metadata,
+              ...parsedMetadata,
               succeededAt: new Date().toISOString(),
               chargeId: event.data.object.latest_charge
             };
+            
+            shouldCreateOrder = true;
             break;
 
           case 'payment_intent.payment_failed':
@@ -142,6 +276,55 @@ export class StripeService {
 
         if (newStatus) {
           payment = await this.paymentRepository.updateStatus(paymentIntentId, newStatus, metadata);
+        }
+
+        // Créer la commande après mise à jour du statut du paiement
+        if (shouldCreateOrder && payment) {
+          console.log('🔵 [STRIPE SERVICE] shouldCreateOrder is TRUE, payment exists:', {
+            paymentId: payment.id,
+            paymentStatus: payment.status
+          });
+          
+          try {
+            // S'assurer que metadata est un objet (récupérer depuis payment mis à jour)
+            const paymentMetadata = payment.metadata || {};
+            const parsedMetadata = typeof paymentMetadata === 'string' 
+              ? JSON.parse(paymentMetadata) 
+              : paymentMetadata;
+            
+            console.log('📦 [STRIPE SERVICE] Creating order from payment:', {
+              paymentId: payment.id,
+              cartId: payment.cartId,
+              userId: payment.userId,
+              hasMetadata: !!parsedMetadata,
+              hasCartItems: !!parsedMetadata?.cartItems,
+              subtotal: parsedMetadata?.subtotal,
+              tva: parsedMetadata?.tva,
+              total: parsedMetadata?.total
+            });
+            
+            const order = await this.orderService.createOrderFromPayment(payment.id, {
+              cartId: payment.cartId,
+              userId: payment.userId,
+              metadata: parsedMetadata
+            });
+            
+            console.log('✅ [STRIPE SERVICE] Order created successfully:', order.orderNumber);
+          } catch (orderError) {
+            console.error('❌ [STRIPE SERVICE] Error creating order from payment:');
+            console.error('   Error type:', orderError.constructor.name);
+            console.error('   Message:', orderError.message);
+            console.error('   Stack:', orderError.stack);
+            if (orderError.code) {
+              console.error('   SQL Error code:', orderError.code);
+              console.error('   SQL State:', orderError.sqlState);
+            }
+            // On continue même si la création de commande échoue
+          }
+        } else {
+          console.log('⚠️ [STRIPE SERVICE] Order NOT created. Reasons:');
+          console.log('   shouldCreateOrder:', shouldCreateOrder);
+          console.log('   payment exists:', !!payment);
         }
       }
 

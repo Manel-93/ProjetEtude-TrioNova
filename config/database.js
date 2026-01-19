@@ -297,6 +297,129 @@ export const initializeDatabases = async () => {
         INDEX idx_created_at (created_at)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
+
+    // Création de la table orders
+    await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS orders (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        order_number VARCHAR(50) UNIQUE NOT NULL,
+        user_id INT NULL,
+        payment_id INT NULL,
+        cart_id INT NULL,
+        subtotal DECIMAL(10, 2) NOT NULL,
+        tva DECIMAL(10, 2) NOT NULL,
+        total DECIMAL(10, 2) NOT NULL,
+        currency VARCHAR(3) DEFAULT 'EUR',
+        status ENUM('pending', 'processing', 'completed', 'canceled') DEFAULT 'pending',
+        shipping_address JSON,
+        billing_address JSON,
+        metadata JSON,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+        FOREIGN KEY (payment_id) REFERENCES payments(id) ON DELETE SET NULL,
+        FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE SET NULL,
+        INDEX idx_user_id (user_id),
+        INDEX idx_payment_id (payment_id),
+        INDEX idx_order_number (order_number),
+        INDEX idx_status (status),
+        INDEX idx_created_at (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Création de la table order_items
+    await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS order_items (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        order_id INT NOT NULL,
+        product_id INT NOT NULL,
+        product_name VARCHAR(200) NOT NULL,
+        product_slug VARCHAR(200) NOT NULL,
+        quantity INT NOT NULL,
+        unit_price_ht DECIMAL(10, 2) NOT NULL,
+        unit_price_ttc DECIMAL(10, 2) NOT NULL,
+        tva DECIMAL(5, 2) NOT NULL,
+        subtotal DECIMAL(10, 2) NOT NULL,
+        total DECIMAL(10, 2) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT,
+        INDEX idx_order_id (order_id),
+        INDEX idx_product_id (product_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Création de la table order_status_history
+    await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS order_status_history (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        order_id INT NOT NULL,
+        status ENUM('pending', 'processing', 'completed', 'canceled') NOT NULL,
+        changed_by INT NULL,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+        FOREIGN KEY (changed_by) REFERENCES users(id) ON DELETE SET NULL,
+        INDEX idx_order_id (order_id),
+        INDEX idx_created_at (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Création de la table invoices
+    await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS invoices (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        invoice_number VARCHAR(50) UNIQUE NOT NULL,
+        order_id INT NOT NULL,
+        user_id INT NULL,
+        subtotal DECIMAL(10, 2) NOT NULL,
+        tva DECIMAL(10, 2) NOT NULL,
+        total DECIMAL(10, 2) NOT NULL,
+        currency VARCHAR(3) DEFAULT 'EUR',
+        status ENUM('draft', 'issued', 'paid', 'canceled') DEFAULT 'draft',
+        issued_at TIMESTAMP NULL,
+        paid_at TIMESTAMP NULL,
+        pdf_path VARCHAR(500),
+        metadata JSON,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+        INDEX idx_order_id (order_id),
+        INDEX idx_user_id (user_id),
+        INDEX idx_invoice_number (invoice_number),
+        INDEX idx_status (status)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Création de la table credit_notes
+    await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS credit_notes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        credit_note_number VARCHAR(50) UNIQUE NOT NULL,
+        invoice_id INT NOT NULL,
+        order_id INT NOT NULL,
+        user_id INT NULL,
+        amount DECIMAL(10, 2) NOT NULL,
+        currency VARCHAR(3) DEFAULT 'EUR',
+        reason TEXT,
+        status ENUM('draft', 'issued', 'applied') DEFAULT 'draft',
+        issued_at TIMESTAMP NULL,
+        pdf_path VARCHAR(500),
+        metadata JSON,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE,
+        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+        INDEX idx_invoice_id (invoice_id),
+        INDEX idx_order_id (order_id),
+        INDEX idx_user_id (user_id),
+        INDEX idx_credit_note_number (credit_note_number),
+        INDEX idx_status (status)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
     console.log('✅ MySQL database initialized');
   } catch (error) {
     console.error('❌ MySQL initialization error:', error.message);
