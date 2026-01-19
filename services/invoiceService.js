@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { InvoiceRepository } from '../repositories/invoiceRepository.js';
 import { OrderRepository } from '../repositories/orderRepository.js';
 import { UserRepository } from '../repositories/userRepository.js';
+import { EmailService } from './emailService.js';
 import { getMySQLConnection } from '../config/database.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -15,6 +16,7 @@ export class InvoiceService {
     this.invoiceRepository = new InvoiceRepository();
     this.orderRepository = new OrderRepository();
     this.userRepository = new UserRepository();
+    this.emailService = new EmailService();
     
     // Créer le dossier invoices s'il n'existe pas
     this.invoicesDir = path.join(__dirname, '..', 'invoices');

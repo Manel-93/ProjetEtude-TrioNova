@@ -34,6 +34,10 @@ export class TokenRepository {
     await Token.deleteMany({ userId, type });
   }
 
+  async deleteAllByUserId(userId) {
+    await Token.deleteMany({ userId });
+  }
+
   async deleteExpiredTokens() {
     await Token.deleteMany({ expiresAt: { $lt: new Date() } });
   }

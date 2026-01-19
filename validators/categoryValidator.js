@@ -9,6 +9,10 @@ export const createCategorySchema = Joi.object({
   description: Joi.string().max(1000).optional().messages({
     'string.max': 'La description ne peut pas dépasser 1000 caractères'
   }),
+  parentId: Joi.number().integer().positive().allow(null).optional().messages({
+    'number.integer': 'L\'ID parent doit être un nombre entier',
+    'number.positive': 'L\'ID parent doit être positif'
+  }),
   displayOrder: Joi.number().integer().min(0).default(0).optional().messages({
     'number.integer': 'L\'ordre d\'affichage doit être un nombre entier',
     'number.min': 'L\'ordre d\'affichage ne peut pas être négatif'
@@ -29,6 +33,10 @@ export const updateCategorySchema = Joi.object({
   }),
   description: Joi.string().max(1000).optional().messages({
     'string.max': 'La description ne peut pas dépasser 1000 caractères'
+  }),
+  parentId: Joi.number().integer().positive().allow(null).optional().messages({
+    'number.integer': 'L\'ID parent doit être un nombre entier',
+    'number.positive': 'L\'ID parent doit être positif'
   }),
   displayOrder: Joi.number().integer().min(0).optional().messages({
     'number.integer': 'L\'ordre d\'affichage doit être un nombre entier',

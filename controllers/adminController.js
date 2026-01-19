@@ -64,5 +64,39 @@ export class AdminController {
       next(error);
     }
   };
+
+  // Reset mot de passe utilisateur (admin)
+  resetUserPassword = async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { newPassword, sendEmail = true } = req.body;
+      
+      const result = await this.userService.resetUserPassword(id, newPassword, sendEmail);
+      
+      res.status(200).json({
+        success: true,
+        message: result.message
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // Stats CA par utilisateur
+  getUserRevenueStats = async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { period = 'month' } = req.query;
+      
+      const stats = await this.userService.getUserRevenueStats(parseInt(id), period);
+      
+      res.status(200).json({
+        success: true,
+        data: stats
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 

@@ -11,6 +11,10 @@ export class CategoryService {
     return await this.categoryRepository.findAll(filters);
   }
 
+  async getAllCategoriesWithHierarchy(filters = {}) {
+    return await this.categoryRepository.findAllWithChildren(filters);
+  }
+
   async getCategoryBySlug(slug) {
     const category = await this.categoryRepository.findBySlug(slug);
     if (!category) {

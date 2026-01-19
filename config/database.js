@@ -175,16 +175,36 @@ export const initializeDatabases = async () => {
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
         description TEXT,
+        parent_id INT NULL,
         display_order INT DEFAULT 0,
         status ENUM('active', 'inactive') DEFAULT 'active',
         slug VARCHAR(200) UNIQUE NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE SET NULL,
         INDEX idx_slug (slug),
         INDEX idx_status (status),
+        INDEX idx_parent_id (parent_id),
         INDEX idx_display_order (display_order)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
+    
+    // Migration : Ajouter parent_id si elle n'existe pas
+    try {
+      const [columns] = await mysqlPool.execute(`
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'categories' AND COLUMN_NAME = 'parent_id'
+      `, [process.env.MYSQL_DATABASE || 'trio_nova_db']);
+      
+      if (columns.length === 0) {
+        await mysqlPool.execute(`ALTER TABLE categories ADD COLUMN parent_id INT NULL`);
+        await mysqlPool.execute(`ALTER TABLE categories ADD FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE SET NULL`);
+        await mysqlPool.execute(`ALTER TABLE categories ADD INDEX idx_parent_id (parent_id)`);
+      }
+    } catch (error) {
+      console.warn('Migration categories warning:', error.message);
+    }
 
     // Création de la table products
     await mysqlPool.execute(`
@@ -417,6 +437,66 @@ export const initializeDatabases = async () => {
         INDEX idx_user_id (user_id),
         INDEX idx_credit_note_number (credit_note_number),
         INDEX idx_status (status)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Création de la table admin_2fa (2FA pour les administrateurs)
+    await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS admin_2fa (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        secret VARCHAR(255) NOT NULL,
+        is_enabled BOOLEAN DEFAULT FALSE,
+        backup_codes JSON,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE KEY unique_user_2fa (user_id),
+        INDEX idx_user_id (user_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Création de la table contact_messages (messages de contact)
+    await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS contact_messages (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        subject VARCHAR(200),
+        message TEXT NOT NULL,
+        status ENUM('pending', 'in_progress', 'resolved', 'archived') DEFAULT 'pending',
+        user_id INT NULL,
+        assigned_to INT NULL,
+        resolved_at TIMESTAMP NULL,
+        metadata JSON,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+        FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL,
+        INDEX idx_status (status),
+        INDEX idx_user_id (user_id),
+        INDEX idx_assigned_to (assigned_to),
+        INDEX idx_created_at (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Création de la table admin_activity_logs (logs d'activité admin)
+    await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS admin_activity_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        admin_id INT NOT NULL,
+        action VARCHAR(100) NOT NULL,
+        entity_type VARCHAR(50),
+        entity_id INT,
+        details JSON,
+        ip_address VARCHAR(45),
+        user_agent TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_admin_id (admin_id),
+        INDEX idx_action (action),
+        INDEX idx_entity (entity_type, entity_id),
+        INDEX idx_created_at (created_at)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 

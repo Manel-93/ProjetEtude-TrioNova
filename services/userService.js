@@ -2,6 +2,10 @@ import { UserRepository } from '../repositories/userRepository.js';
 import { LoginHistoryRepository } from '../repositories/loginHistoryRepository.js';
 import { AddressRepository } from '../repositories/addressRepository.js';
 import { PaymentMethodRepository } from '../repositories/paymentMethodRepository.js';
+import { TokenRepository } from '../repositories/tokenRepository.js';
+import { PasswordService } from './passwordService.js';
+import { EmailService } from './emailService.js';
+import { getMySQLConnection } from '../config/database.js';
 
 export class UserService {
   constructor() {
@@ -9,6 +13,9 @@ export class UserService {
     this.loginHistoryRepository = new LoginHistoryRepository();
     this.addressRepository = new AddressRepository();
     this.paymentMethodRepository = new PaymentMethodRepository();
+    this.tokenRepository = new TokenRepository();
+    this.passwordService = new PasswordService();
+    this.emailService = new EmailService();
   }
 
   // Masquer les données sensibles
@@ -109,6 +116,70 @@ export class UserService {
     
     const updatedUser = await this.userRepository.updateStatus(userId, isActive);
     return this.sanitizeUser(updatedUser);
+  }
+
+  // Reset mot de passe par admin
+  async resetUserPassword(userId, newPassword, sendEmail = true) {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new Error('Utilisateur introuvable');
+    }
+
+    // Hasher le nouveau mot de passe
+    const passwordHash = await this.passwordService.hashPassword(newPassword);
+    await this.userRepository.updatePassword(userId, passwordHash);
+
+    // Invalider tous les refresh tokens de l'utilisateur
+    await this.tokenRepository.deleteAllByUserId(userId);
+
+    // Envoyer un email si demandé
+    if (sendEmail) {
+      try {
+        await this.emailService.sendPasswordResetConfirmation(user.email, user.first_name);
+      } catch (error) {
+        console.warn('⚠️ Could not send password reset email:', error.message);
+      }
+    }
+
+    return { message: 'Mot de passe réinitialisé avec succès' };
+  }
+
+  // Stats CA par utilisateur
+  async getUserRevenueStats(userId, period = 'month') {
+    const pool = await getMySQLConnection();
+    let dateFilter = '';
+    const params = [userId];
+
+    const now = new Date();
+    let startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    if (period === 'week') {
+      startDate = new Date(now);
+      startDate.setDate(now.getDate() - 7);
+    } else if (period === 'day') {
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    }
+
+    dateFilter = 'AND o.created_at >= ?';
+    params.push(startDate.toISOString().slice(0, 19).replace('T', ' '));
+
+    const [rows] = await pool.execute(`
+      SELECT 
+        COUNT(DISTINCT o.id) as orders_count,
+        SUM(o.total) as total_revenue,
+        AVG(o.total) as average_order_value
+      FROM orders o
+      WHERE o.user_id = ?
+      ${dateFilter}
+      AND o.status != 'canceled'
+    `, params);
+
+    return {
+      userId: parseInt(userId),
+      period,
+      ordersCount: parseInt(rows[0]?.orders_count || 0),
+      totalRevenue: parseFloat(rows[0]?.total_revenue || 0),
+      averageOrderValue: parseFloat(rows[0]?.average_order_value || 0)
+    };
   }
 
   async deleteUser(userId) {

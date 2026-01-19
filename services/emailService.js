@@ -53,5 +53,57 @@ export class EmailService {
       throw new Error('Erreur lors de l\'envoi de l\'email de réinitialisation');
     }
   }
+
+  async sendPasswordResetConfirmation(email, firstName) {
+    const mailOptions = {
+      from: emailFrom,
+      to: email,
+      subject: 'Votre mot de passe a été réinitialisé - TrioNova',
+      html: `
+        <h2>Mot de passe réinitialisé</h2>
+        <p>Bonjour ${firstName},</p>
+        <p>Votre mot de passe a été réinitialisé par un administrateur.</p>
+        <p>Si vous n'avez pas demandé cette réinitialisation, veuillez contacter le support immédiatement.</p>
+        <p>Cordialement,<br>L'équipe TrioNova</p>
+      `
+    };
+
+    try {
+      await emailTransporter.sendMail(mailOptions);
+      return true;
+    } catch (error) {
+      console.error('Erreur envoi email:', error);
+      throw new Error('Erreur lors de l\'envoi de l\'email de confirmation');
+    }
+  }
+
+  async sendInvoiceEmail(email, firstName, invoiceNumber, pdfPath) {
+    const mailOptions = {
+      from: emailFrom,
+      to: email,
+      subject: `Votre facture ${invoiceNumber} - TrioNova`,
+      html: `
+        <h2>Votre facture</h2>
+        <p>Bonjour ${firstName},</p>
+        <p>Votre facture N° ${invoiceNumber} est disponible en pièce jointe.</p>
+        <p>Merci pour votre achat !</p>
+        <p>Cordialement,<br>L'équipe TrioNova</p>
+      `,
+      attachments: [
+        {
+          filename: `facture_${invoiceNumber}.pdf`,
+          path: pdfPath
+        }
+      ]
+    };
+
+    try {
+      await emailTransporter.sendMail(mailOptions);
+      return true;
+    } catch (error) {
+      console.error('Erreur envoi email facture:', error);
+      throw new Error('Erreur lors de l\'envoi de l\'email de facture');
+    }
+  }
 }
 

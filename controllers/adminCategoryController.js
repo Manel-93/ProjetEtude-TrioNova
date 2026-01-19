@@ -7,11 +7,17 @@ export class AdminCategoryController {
 
   getAllCategories = async (req, res, next) => {
     try {
-      const { status } = req.query;
+      const { status, hierarchy = 'false' } = req.query;
       const filters = {};
       if (status) filters.status = status;
       
-      const categories = await this.categoryService.getAllCategories(filters);
+      let categories;
+      if (hierarchy === 'true') {
+        categories = await this.categoryService.getAllCategoriesWithHierarchy(filters);
+      } else {
+        categories = await this.categoryService.getAllCategories(filters);
+      }
+      
       res.status(200).json({
         success: true,
         data: categories

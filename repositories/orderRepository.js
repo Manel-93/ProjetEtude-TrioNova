@@ -145,12 +145,67 @@ export class OrderRepository {
       query += ' AND user_id = ?';
       params.push(filters.userId);
     }
+    if (filters.orderNumber) {
+      query += ' AND order_number LIKE ?';
+      params.push(`%${filters.orderNumber}%`);
+    }
+    if (filters.dateFrom) {
+      query += ' AND created_at >= ?';
+      params.push(filters.dateFrom);
+    }
+    if (filters.dateTo) {
+      query += ' AND created_at <= ?';
+      params.push(filters.dateTo);
+    }
 
-    query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+    // Tri personnalisable
+    const sortBy = filters.sortBy || 'created_at';
+    const sortOrder = filters.sortOrder || 'DESC';
+    const allowedSortFields = ['created_at', 'updated_at', 'total', 'status', 'order_number'];
+    const safeSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
+    const safeSortOrder = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    
+    query += ` ORDER BY ${safeSortBy} ${safeSortOrder} LIMIT ? OFFSET ?`;
     params.push(limit, offset);
 
     const [rows] = await pool.execute(query, params);
-    return rows.map(row => this.mapRowToObject(row));
+    
+    // Compter le total
+    let countQuery = 'SELECT COUNT(*) as total FROM orders WHERE 1=1';
+    const countParams = [];
+    if (filters.userId) {
+      countQuery += ' AND user_id = ?';
+      countParams.push(filters.userId);
+    }
+    if (filters.status) {
+      countQuery += ' AND status = ?';
+      countParams.push(filters.status);
+    }
+    if (filters.orderNumber) {
+      countQuery += ' AND order_number LIKE ?';
+      countParams.push(`%${filters.orderNumber}%`);
+    }
+    if (filters.dateFrom) {
+      countQuery += ' AND created_at >= ?';
+      countParams.push(filters.dateFrom);
+    }
+    if (filters.dateTo) {
+      countQuery += ' AND created_at <= ?';
+      countParams.push(filters.dateTo);
+    }
+    
+    const [countResult] = await pool.execute(countQuery, countParams);
+    const total = countResult[0].total;
+
+    return {
+      data: rows.map(row => this.mapRowToObject(row)),
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: parseInt(total),
+        totalPages: Math.ceil(total / limit)
+      }
+    };
   }
 
   // Mettre à jour le statut d'une commande

@@ -198,15 +198,7 @@ export class OrderService {
 
   // Récupérer toutes les commandes (admin)
   async getAllOrders(filters = {}, pagination = {}) {
-    const orders = await this.orderRepository.findAll(filters, pagination);
-    
-    return {
-      data: orders,
-      pagination: {
-        page: parseInt(pagination.page || 1),
-        limit: parseInt(pagination.limit || 50)
-      }
-    };
+    return await this.orderRepository.findAll(filters, pagination);
   }
 
   // Mettre à jour le statut d'une commande (admin)

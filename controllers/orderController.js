@@ -49,11 +49,16 @@ export class OrderController {
   // Récupérer toutes les commandes (admin)
   getAllOrders = async (req, res, next) => {
     try {
-      const { status, userId, page = 1, limit = 50 } = req.query;
+      const { status, userId, orderNumber, dateFrom, dateTo, sortBy = 'created_at', sortOrder = 'DESC', page = 1, limit = 50 } = req.query;
       const filters = {};
       
       if (status) filters.status = status;
       if (userId) filters.userId = parseInt(userId);
+      if (orderNumber) filters.orderNumber = orderNumber;
+      if (dateFrom) filters.dateFrom = dateFrom;
+      if (dateTo) filters.dateTo = dateTo;
+      filters.sortBy = sortBy;
+      filters.sortOrder = sortOrder;
       
       const result = await this.orderService.getAllOrders(filters, { page, limit });
       
