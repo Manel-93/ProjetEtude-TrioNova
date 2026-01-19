@@ -12,7 +12,43 @@ const cartController = new CartController();
 // pour gérer le guest token (même pour les utilisateurs authentifiés)
 router.use(handleGuestToken);
 
-// Route pour obtenir le panier (public - invité ou utilisateur)
+/**
+ * @swagger
+ * /cart:
+ *   get:
+ *     summary: Obtenir le panier (utilisateur ou invité)
+ *     tags: [Panier]
+ *     security:
+ *       - bearerAuth: []
+ *       - guestToken: []
+ *     description: |
+ *       Récupère le panier de l'utilisateur connecté ou du visiteur invité.
+ *       Si un utilisateur est connecté, retourne son panier utilisateur.
+ *       Sinon, utilise le guest token fourni dans le header X-Guest-Token.
+ *     responses:
+ *       200:
+ *         description: Panier récupéré avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     cart:
+ *                       type: object
+ *                     items:
+ *                       type: array
+ *                     subtotal:
+ *                       type: number
+ *                     tva:
+ *                       type: number
+ *                     total:
+ *                       type: number
+ */
 router.get('/', cartController.getCart);
 
 // Route pour valider le panier avant checkout (public - invité ou utilisateur)

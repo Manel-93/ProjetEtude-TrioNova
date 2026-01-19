@@ -100,7 +100,23 @@ npm run dev
 npm start
 ```
 
-## Routes API - Collection Postman
+## Documentation API
+
+### Swagger UI
+
+La documentation interactive de l'API est disponible via Swagger UI :
+
+**URL** : `http://localhost:5000/api/docs`
+
+Cette interface permet de :
+- Explorer tous les endpoints de l'API
+- Tester les requêtes directement depuis le navigateur
+- Voir les schémas de données (request/response)
+- Authentifier avec votre token JWT pour tester les endpoints protégés
+
+**JSON Swagger** : `http://localhost:5000/api/docs.json`
+
+### Routes API - Collection Postman
 
 Base URL: `http://localhost:5000/api/`
 
@@ -337,6 +353,32 @@ Client → Routes → Middlewares (validation/auth) → Controllers → Services
 - **Avoir automatique** : Lors de l'annulation d'une commande, un avoir (credit note) est généré automatiquement
 - **Historique des statuts** : Chaque changement de statut de commande est enregistré avec l'utilisateur et la date
 
+
+## Sécurité
+
+### Mesures de sécurité implémentées
+
+1. **Helmet** : Headers de sécurité HTTP (XSS Protection, Content Security Policy, etc.)
+2. **Rate Limiting** : 
+   - 100 requêtes par IP toutes les 15 minutes (routes générales)
+   - 5 tentatives de connexion toutes les 15 minutes (routes d'authentification)
+3. **XSS Protection** : Nettoyage automatique des entrées utilisateur (xss-clean)
+4. **HTTP Parameter Pollution Protection** : Protection contre les attaques HPP
+5. **Validation des données** : Validation stricte avec Joi sur tous les endpoints
+6. **Protection SQL Injection** : Utilisation de requêtes paramétrées (mysql2)
+7. **JWT Authentication** : Tokens sécurisés avec expiration
+8. **CORS** : Configuration des origines autorisées
+
+### Logs
+
+- **Morgan** : Logs HTTP automatiques (format dev en développement, format combined en production)
+- **Logs applicatifs** : Logs détaillés dans les services pour le débogage
+
+### Gestion des erreurs
+
+- Gestion centralisée dans `middlewares/errorMiddleware.js`
+- Messages d'erreur standardisés
+- Pas d'exposition d'informations sensibles dans les erreurs
 
 ## Important !
 
