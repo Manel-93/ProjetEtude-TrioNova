@@ -6,7 +6,7 @@ const swaggerOptions = {
     info: {
       title: 'TrioNova API',
       version: '1.0.0',
-      description: 'API REST pour la plateforme e-commerce TrioNova / AltheSystems',
+      description: 'API REST pour la plateforme e-commerce TrioNova / AltheaSystems',
       contact: {
         name: 'Support API',
         email: 'support@trionova.com'
@@ -127,6 +127,14 @@ const swaggerOptions = {
       {
         name: 'Commandes',
         description: 'Gestion des commandes et factures'
+      },
+      {
+        name: 'Contact',
+        description: 'Formulaire de contact et gestion des messages'
+      },
+      {
+        name: 'Chatbot',
+        description: 'Chatbot FAQ et escalade vers un humain'
       }
     ]
   },

@@ -1,4 +1,5 @@
 import { ContactMessageRepository } from '../repositories/contactMessageRepository.js';
+import { ContactMessageModel } from '../models/ContactMessage.js';
 
 export class ContactMessageService {
   constructor() {
@@ -6,7 +7,26 @@ export class ContactMessageService {
   }
 
   async create(messageData) {
-    return await this.contactMessageRepository.create(messageData);
+    const mysqlMessage = await this.contactMessageRepository.create(messageData);
+
+    try {
+      await ContactMessageModel.create({
+        name: mysqlMessage.name,
+        email: mysqlMessage.email,
+        subject: mysqlMessage.subject,
+        message: mysqlMessage.message,
+        status: mysqlMessage.status,
+        userId: mysqlMessage.userId,
+        metadata: mysqlMessage.metadata || {
+          source: 'contact_form'
+        }
+      });
+    } catch (error) {
+      // On log l'erreur mais on ne bloque pas la création MySQL
+      console.error('MongoDB ContactMessage create error:', error.message);
+    }
+
+    return mysqlMessage;
   }
 
   async getById(id) {

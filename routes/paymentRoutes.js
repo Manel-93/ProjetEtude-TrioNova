@@ -7,12 +7,66 @@ import { verifyStripeWebhook } from '../middlewares/stripeWebhookMiddleware.js';
 const router = express.Router();
 const paymentController = new PaymentController();
 
-// Route pour créer un PaymentIntent (authentifié ou invité)
-// Nécessite le middleware handleGuestToken pour gérer les invités
+/**
+ * @swagger
+ * /payments/create-intent:
+ *   post:
+ *     summary: Créer un PaymentIntent Stripe pour le panier
+ *     tags: [Paiements]
+ *     security:
+ *       - bearerAuth: []
+ *       - guestToken: []
+ *     description: |
+ *       Crée un PaymentIntent Stripe pour le panier actuel (utilisateur ou invité).
+ *       Retourne le client_secret nécessaire pour finaliser le paiement côté client.
+ *     responses:
+ *       200:
+ *         description: PaymentIntent créé avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     clientSecret:
+ *                       type: string
+ *                       description: Secret client Stripe pour finaliser le paiement
+ *                     paymentIntentId:
+ *                       type: string
+ *       400:
+ *         description: Panier vide ou invalide
+ *       401:
+ *         description: Non authentifié (pour utilisateurs connectés)
+ */
 router.post('/create-intent', handleGuestToken, paymentController.createPaymentIntent);
 
-// Route webhook Stripe (pas d'authentification, vérification signature uniquement)
-// NOTE: Le body brut est déjà configuré dans server.js pour cette route
+/**
+ * @swagger
+ * /payments/webhook:
+ *   post:
+ *     summary: Webhook Stripe pour les événements de paiement
+ *     tags: [Paiements]
+ *     description: |
+ *       Endpoint webhook appelé par Stripe pour notifier les événements de paiement.
+ *       Ne nécessite pas d'authentification JWT, mais vérifie la signature Stripe.
+ *       Le body doit être brut (raw) pour la vérification de signature.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             description: Événement Stripe (format défini par Stripe)
+ *     responses:
+ *       200:
+ *         description: Webhook traité avec succès
+ *       400:
+ *         description: Signature invalide ou événement non reconnu
+ */
 router.post('/webhook', 
   verifyStripeWebhook,
   paymentController.handleWebhook

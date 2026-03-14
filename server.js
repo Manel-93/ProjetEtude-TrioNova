@@ -16,6 +16,7 @@ import cartRoutes from './routes/cartRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import contactRoutes from './routes/contactRoutes.js';
 import { errorHandler, notFoundHandler } from './middlewares/errorMiddleware.js';
 
 dotenv.config();
@@ -128,6 +129,7 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api', contactRoutes);
 
 // Gestion des erreurs
 app.use(notFoundHandler);

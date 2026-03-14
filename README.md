@@ -102,23 +102,49 @@ npm start
 
 ## Documentation API
 
-### Swagger UI
 
 La documentation interactive de l'API est disponible via Swagger UI :
 
 **URL** : `http://localhost:5000/api/docs`
 
-Cette interface permet de :
-- Explorer tous les endpoints de l'API
-- Tester les requêtes directement depuis le navigateur
-- Voir les schémas de données (request/response)
-- Authentifier avec votre token JWT pour tester les endpoints protégés
+Cette interface permet d'xplorer tous les endpoints de l'API
 
 **JSON Swagger** : `http://localhost:5000/api/docs.json`
 
+# Résumé des lignes de commande : 
+ 
+npm install react-router-dom
+npm install @reduxjs/toolkit react-redux
+npm install i18next react-i18next
+npm install axios
+npm install express cors dotenv
+npm install jsonwebtoken bcrypt
+npm install mssql
+npm install mongoose
+npm install stripe
+npm install pdfkit
+npm install elasticsearch
+npm install -D nodemon
+
+
+npm create vite@latest althea-front -- --template react
+npm install
+npm run dev
+npm install react-router-dom
+npm install @reduxjs/toolkit react-redux
+npm install i18next react-i18next
+npm install axios
+
+npm install stripe
+
+npm install pdfkit
+
+npm run test
+
+
+
 ### Routes API - Collection Postman
 
-Base URL: `http://localhost:5000/api/`
 
 ### Routes Authentification
 - POST /auth/register
@@ -299,64 +325,9 @@ Client → Routes → Middlewares (validation/auth) → Controllers → Services
 - **Validators** : Schémas de validation des données
 
 
-### Configuration STRIPE
-
-1. **Créer un compte Stripe** : https://stripe.com
-2. **Récupérer les clés API** :
-   - Clé secrète (SK) : Dashboard → Developers → API keys → Secret key
-   - Webhook secret : Dashboard → Developers → Webhooks → Ajouter endpoint → Copier le "Signing secret"
-
-3. **Configurer les variables d'environnement** dans `.env` :
-   ```env
-   # Stripe Configuration
-   STRIPE_SECRET_KEY=sk_test_...  # Clé secrète Stripe (test ou live)
-   STRIPE_WEBHOOK_SECRET=whsec_... # Secret webhook Stripe
-   ```
-
-4. **Configurer le webhook Stripe** :
-   - URL : `https://votre-domaine.com/api/payments/webhook`
-   - Événements à écouter :
-     - `payment_intent.succeeded`
-     - `payment_intent.payment_failed`
-     - `payment_intent.canceled`
-     - `payment_intent.processing`
-     - `charge.refunded`
-
-### Statuts de paiement
-
-- `pending` : Paiement en attente
-- `processing` : Paiement en cours de traitement
-- `succeeded` : Paiement réussi
-- `failed` : Paiement échoué
-- `canceled` : Paiement annulé
-- `refunded` : Paiement remboursé
-
-### Statuts de commande
-
-- `pending` : Commande en attente
-- `processing` : Commande en cours de traitement
-- `completed` : Commande terminée
-- `canceled` : Commande annulée
-
-### Statuts de facture
-
-- `draft` : Brouillon
-- `issued` : Facture émise
-- `paid` : Facture payée
-- `canceled` : Facture annulée (avec avoir généré)
-
-### Fonctionnalités Commandes et Facturation
-
-- **Création automatique de commande** : Après un paiement réussi (webhook Stripe)
-- **Génération automatique de facture** : Une facture est créée automatiquement pour chaque commande
-- **Génération PDF** : Les factures sont générées en PDF via PDFKit
-- **Avoir automatique** : Lors de l'annulation d'une commande, un avoir (credit note) est généré automatiquement
-- **Historique des statuts** : Chaque changement de statut de commande est enregistré avec l'utilisateur et la date
-
 
 ## Sécurité
 
-### Mesures de sécurité implémentées
 
 1. **Helmet** : Headers de sécurité HTTP (XSS Protection, Content Security Policy, etc.)
 2. **Rate Limiting** : 
@@ -377,8 +348,6 @@ Client → Routes → Middlewares (validation/auth) → Controllers → Services
 ### Gestion des erreurs
 
 - Gestion centralisée dans `middlewares/errorMiddleware.js`
-- Messages d'erreur standardisés
-- Pas d'exposition d'informations sensibles dans les erreurs
 
 ## Important !
 

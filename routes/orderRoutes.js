@@ -109,8 +109,110 @@ router.get('/', authenticate, orderController.getMyOrders);
  */
 router.get('/:id', authenticate, orderController.getOrderById);
 
-// Routes commandes (admin)
+/**
+ * @swagger
+ * /orders/admin/orders:
+ *   get:
+ *     summary: Récupérer toutes les commandes (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [pending, processing, completed, canceled]
+ *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *     responses:
+ *       200:
+ *         description: Liste des commandes
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ *       401:
+ *         description: Non authentifié
+ *       403:
+ *         description: Accès refusé (admin requis)
+ */
 router.get('/admin/orders', authenticate, isAdmin, orderController.getAllOrders);
+
+/**
+ * @swagger
+ * /orders/admin/orders/{id}/status:
+ *   post:
+ *     summary: Mettre à jour le statut d'une commande (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [pending, processing, completed, canceled]
+ *                 example: processing
+ *               notes:
+ *                 type: string
+ *                 maxLength: 500
+ *                 description: Notes optionnelles sur le changement de statut
+ *     responses:
+ *       200:
+ *         description: Statut mis à jour avec succès
+ *       400:
+ *         description: Erreur de validation
+ *       401:
+ *         description: Non authentifié
+ *       403:
+ *         description: Accès refusé (admin requis)
+ *       404:
+ *         description: Commande introuvable
+ */
 router.post('/admin/orders/:id/status', authenticate, isAdmin, validate(updateOrderStatusSchema), orderController.updateOrderStatus);
 
 /**
