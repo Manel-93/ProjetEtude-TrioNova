@@ -206,6 +206,25 @@ export const initializeDatabases = async () => {
       console.warn('Migration categories warning:', error.message);
     }
 
+    // Migration : image de couverture catégorie (URL absolue)
+    try {
+      const [imgCols] = await mysqlPool.execute(
+        `
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'categories' AND COLUMN_NAME = 'image_url'
+        `,
+        [process.env.MYSQL_DATABASE || 'trio_nova_db']
+      );
+      if (imgCols.length === 0) {
+        await mysqlPool.execute(
+          `ALTER TABLE categories ADD COLUMN image_url VARCHAR(2048) NULL DEFAULT NULL AFTER slug`
+        );
+      }
+    } catch (error) {
+      console.warn('Migration categories image_url warning:', error.message);
+    }
+
     // Création de la table products
     await mysqlPool.execute(`
       CREATE TABLE IF NOT EXISTS products (
@@ -480,20 +499,21 @@ export const initializeDatabases = async () => {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // Création de la table carousel_slides
+    // Carrousel page d'accueil (admin + vitrine)
     await mysqlPool.execute(`
-      CREATE TABLE IF NOT EXISTS carousel_slides (
+      CREATE TABLE IF NOT EXISTS home_carousel_slides (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        title VARCHAR(200) NULL,
-        subtitle VARCHAR(500) NULL,
-        image_url VARCHAR(1000) NOT NULL,
-        link_url VARCHAR(1000) NULL,
-        active BOOLEAN DEFAULT TRUE,
-        display_order INT DEFAULT 0,
+        product_id INT NULL,
+        image_url VARCHAR(2048) NULL,
+        link_url VARCHAR(2048) NULL,
+        title VARCHAR(500) NULL,
+        subtitle VARCHAR(1000) NULL,
+        active TINYINT(1) NOT NULL DEFAULT 1,
+        sort_order INT NOT NULL DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        INDEX idx_active_display_order (active, display_order),
-        INDEX idx_display_order (display_order)
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL,
+        INDEX idx_active_sort (active, sort_order)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
