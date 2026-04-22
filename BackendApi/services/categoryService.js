@@ -69,22 +69,34 @@ export class CategoryService {
   }
 
   async deleteCategory(id) {
-    const category = await this.categoryRepository.findById(id);
+    const numericId = Number.parseInt(String(id), 10);
+    if (Number.isNaN(numericId)) {
+      throw new Error('Identifiant de catégorie invalide');
+    }
+
+    const category = await this.categoryRepository.findById(numericId);
     if (!category) {
       throw new Error('Catégorie introuvable');
     }
-    
+
+    const childCount = await this.categoryRepository.countByParentId(numericId);
+    if (childCount > 0) {
+      throw new Error(
+        'Impossible de supprimer une catégorie qui contient des sous-catégories. Supprimez ou déplacez-les d’abord.'
+      );
+    }
+
     // Vérifier qu'il n'y a pas de produits associés
     const productsResult = await this.productRepository.findAll(
-      { categoryId: id },
+      { categoryId: numericId },
       { page: 1, limit: 1 }
     );
-    
+
     if (productsResult.pagination.total > 0) {
       throw new Error('Impossible de supprimer une catégorie contenant des produits');
     }
-    
-    await this.categoryRepository.delete(id);
+
+    await this.categoryRepository.delete(numericId);
     return { message: 'Catégorie supprimée avec succès' };
   }
 }

@@ -1,7 +1,7 @@
 import express from 'express';
 import { CartController } from '../controllers/cartController.js';
 import { handleGuestToken } from '../middlewares/cartMiddleware.js';
-import { authenticate } from '../middlewares/authMiddleware.js';
+import { authenticateOptional } from '../middlewares/authMiddleware.js';
 import { validate } from '../middlewares/validationMiddleware.js';
 import { addItemSchema, updateItemSchema, removeItemSchema } from '../validators/cartValidator.js';
 
@@ -10,7 +10,7 @@ const cartController = new CartController();
 
 // Toutes les routes du panier nécessitent le middleware handleGuestToken
 // pour gérer le guest token (même pour les utilisateurs authentifiés)
-router.use(handleGuestToken);
+router.use(authenticateOptional, handleGuestToken);
 
 /**
  * @swagger

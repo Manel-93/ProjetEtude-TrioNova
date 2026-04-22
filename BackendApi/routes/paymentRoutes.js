@@ -1,6 +1,6 @@
 import express from 'express';
 import { PaymentController } from '../controllers/paymentController.js';
-import { authenticate } from '../middlewares/authMiddleware.js';
+import { authenticateOptional } from '../middlewares/authMiddleware.js';
 import { handleGuestToken } from '../middlewares/cartMiddleware.js';
 import { verifyStripeWebhook } from '../middlewares/stripeWebhookMiddleware.js';
 
@@ -42,7 +42,29 @@ const paymentController = new PaymentController();
  *       401:
  *         description: Non authentifié (pour utilisateurs connectés)
  */
-router.post('/create-intent', handleGuestToken, paymentController.createPaymentIntent);
+router.post('/create-intent', authenticateOptional, handleGuestToken, paymentController.createPaymentIntent);
+
+/**
+ * @swagger
+ * /payments/finalize-intent:
+ *   post:
+ *     summary: Finaliser un PaymentIntent côté serveur (fallback sans webhook)
+ *     tags: [Paiements]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [paymentIntentId]
+ *             properties:
+ *               paymentIntentId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Finalisation effectuée
+ */
+router.post('/finalize-intent', paymentController.finalizePaymentIntent);
 
 /**
  * @swagger

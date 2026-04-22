@@ -1,8 +1,18 @@
 import { emailTransporter, emailFrom } from '../config/email.js';
 
 export class EmailService {
+  getStorefrontUrl(baseUrl) {
+    return (
+      process.env.STOREFRONT_URL ||
+      process.env.FRONTEND_URL ||
+      process.env.CLIENT_URL ||
+      baseUrl
+    ).replace(/\/$/, '');
+  }
+
   async sendEmailConfirmation(email, token, baseUrl) {
-    const confirmUrl = `${baseUrl}/auth/confirm-email?token=${token}`;
+    const storefrontUrl = this.getStorefrontUrl(baseUrl);
+    const confirmUrl = `${storefrontUrl}/connexion?confirmation=${encodeURIComponent(token)}`;
     
     const mailOptions = {
       from: emailFrom,
@@ -28,7 +38,8 @@ export class EmailService {
   }
 
   async sendPasswordReset(email, token, baseUrl) {
-    const resetUrl = `${baseUrl}/auth/reset-password?token=${token}`;
+    const storefrontUrl = this.getStorefrontUrl(baseUrl);
+    const resetUrl = `${storefrontUrl}/reinitialiser-mot-de-passe?token=${encodeURIComponent(token)}`;
     
     const mailOptions = {
       from: emailFrom,
@@ -103,6 +114,65 @@ export class EmailService {
     } catch (error) {
       console.error('Erreur envoi email facture:', error);
       throw new Error('Erreur lors de l\'envoi de l\'email de facture');
+    }
+  }
+
+  async sendCreditNoteEmail(email, firstName, creditNoteNumber, amount, reason, pdfPath) {
+    const safeName = firstName || 'Client';
+    const safeAmount = Number(amount || 0).toFixed(2);
+    const mailOptions = {
+      from: emailFrom,
+      to: email,
+      subject: `Votre avoir ${creditNoteNumber} - TrioNova`,
+      html: `
+        <h2>Votre avoir est disponible</h2>
+        <p>Bonjour ${safeName},</p>
+        <p>Un avoir a été émis sur votre compte.</p>
+        <p><strong>Référence :</strong> ${creditNoteNumber}</p>
+        <p><strong>Montant :</strong> ${safeAmount} EUR</p>
+        <p><strong>Motif :</strong> ${reason || 'Ajustement comptable'}</p>
+        <p>Le document PDF de l'avoir est joint à cet email.</p>
+        <p>Cordialement,<br>L'équipe TrioNova</p>
+      `,
+      attachments: [
+        {
+          filename: `avoir_${creditNoteNumber}.pdf`,
+          path: pdfPath
+        }
+      ]
+    };
+
+    try {
+      await emailTransporter.sendMail(mailOptions);
+      return true;
+    } catch (error) {
+      console.error('Erreur envoi email avoir:', error);
+      throw new Error('Erreur lors de l\'envoi de l\'email d\'avoir');
+    }
+  }
+
+  async sendOrderConfirmation(email, firstName, orderNumber, total) {
+    const mailOptions = {
+      from: emailFrom,
+      to: email,
+      subject: `Confirmation de commande ${orderNumber} - TrioNova`,
+      html: `
+        <h2>Commande confirmée</h2>
+        <p>Bonjour ${firstName || ''},</p>
+        <p>Nous avons bien reçu votre paiement.</p>
+        <p><strong>Commande :</strong> ${orderNumber}</p>
+        <p><strong>Montant :</strong> ${Number(total || 0).toFixed(2)} EUR</p>
+        <p>Un email de facture vous sera transmis si la facture est disponible.</p>
+        <p>Cordialement,<br>L'équipe TrioNova</p>
+      `
+    };
+
+    try {
+      await emailTransporter.sendMail(mailOptions);
+      return true;
+    } catch (error) {
+      console.error('Erreur envoi email confirmation commande:', error);
+      throw new Error('Erreur lors de l\'envoi de l\'email de confirmation de commande');
     }
   }
 }

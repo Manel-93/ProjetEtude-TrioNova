@@ -14,15 +14,30 @@ export class ProductImageRepository {
     return images;
   }
 
+  /** Images pour plusieurs productId (une requête MongoDB). */
+  async findByProductIds(productIds) {
+    const ids = [
+      ...new Set(
+        (productIds || [])
+          .map((id) => Number(id))
+          .filter((n) => Number.isFinite(n))
+      )
+    ];
+    if (ids.length === 0) return [];
+    return ProductImage.find({ productId: { $in: ids } })
+      .sort({ productId: 1, order: 1, createdAt: 1 })
+      .lean();
+  }
+
   async findById(id) {
     const image = await ProductImage.findById(id).lean();
     return image || null;
   }
 
   async findPrimaryByProductId(productId) {
-    const image = await ProductImage.findOne({ 
-      productId, 
-      isPrimary: true 
+    const image = await ProductImage.findOne({
+      productId,
+      isPrimary: true
     }).lean();
     return image || null;
   }
@@ -42,7 +57,7 @@ export class ProductImageRepository {
       { productId, _id: { $ne: imageId } },
       { $set: { isPrimary: false } }
     );
-    
+
     // Définir celui-ci comme primary
     const image = await ProductImage.findByIdAndUpdate(
       imageId,
@@ -71,4 +86,3 @@ export class ProductImageRepository {
     return this.findByProductId(productId);
   }
 }
-

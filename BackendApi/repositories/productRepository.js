@@ -1,7 +1,8 @@
 import { getMySQLConnection } from '../config/database.js';
+import { sqlStorefrontProductExclusion } from '../utils/storefrontProductExclusions.js';
 
 export class ProductRepository {
-  async findAll(filters = {}, pagination = {}) {
+  async findAll(filters = {}, pagination = {}, options = {}) {
     const pool = await getMySQLConnection();
     const { page = 1, limit = 20 } = pagination;
     const offset = (page - 1) * limit;
@@ -34,6 +35,9 @@ export class ProductRepository {
         query += ' AND stock = 0';
       }
     }
+    if (options.excludeStorefrontHidden) {
+      query += sqlStorefrontProductExclusion();
+    }
     
     // Tri : priorité décroissante, puis stock > 0 en premier, puis date de création
     query += ' ORDER BY priority DESC, CASE WHEN stock > 0 THEN 0 ELSE 1 END, created_at DESC LIMIT ? OFFSET ?';
@@ -63,6 +67,9 @@ export class ProductRepository {
       } else {
         countQuery += ' AND stock = 0';
       }
+    }
+    if (options.excludeStorefrontHidden) {
+      countQuery += sqlStorefrontProductExclusion();
     }
     
     const [countResult] = await pool.execute(countQuery, countParams);
@@ -193,6 +200,80 @@ export class ProductRepository {
     const pool = await getMySQLConnection();
     await pool.execute('DELETE FROM products WHERE id = ?', [id]);
     return true;
+  }
+
+  /**
+   * Produits actifs visibles vitrine, pour correspondance mots-clés (chatbot local).
+   * @param {string[]} tokens mots normalisés (ex. sans accents), longueur >= 2
+   * @param {number} limit
+   */
+  async searchActiveProductsForChatbotTokens(tokens, limit = 8) {
+    const safeTokens = (tokens || [])
+      .map((t) => String(t).replace(/[%_\\]/g, ''))
+      .filter(Boolean);
+    if (!safeTokens.length) return [];
+    const pool = await getMySQLConnection();
+    const exclusion = sqlStorefrontProductExclusion();
+    const parts = safeTokens.map(
+      () => '(LOWER(name) LIKE ? OR LOWER(COALESCE(description, \'\')) LIKE ?)'
+    );
+    const whereOr = parts.join(' OR ');
+    const params = [];
+    for (const safe of safeTokens) {
+      const p = `%${safe}%`;
+      params.push(p, p);
+    }
+    params.push(limit);
+    const [rows] = await pool.execute(
+      `SELECT id, name, description, technical_specs, price_ht, tva, price_ttc,
+              stock, priority, status, slug, category_id, created_at, updated_at
+       FROM products
+       WHERE status = 'active' ${exclusion}
+       AND (${whereOr})
+       ORDER BY priority DESC, stock > 0 DESC, created_at DESC
+       LIMIT ?`,
+      params
+    );
+    return rows.map((row) => this.mapRowToObject(row));
+  }
+
+  async findTopProducts(limit = 50) {
+    const pool = await getMySQLConnection();
+    const [rows] = await pool.execute(
+      `SELECT * FROM products
+       WHERE priority > 0
+       ORDER BY priority DESC, created_at DESC
+       LIMIT ?`,
+      [limit]
+    );
+    return rows.map((row) => this.mapRowToObject(row));
+  }
+
+  async getMaxPriority() {
+    const pool = await getMySQLConnection();
+    const [rows] = await pool.execute('SELECT COALESCE(MAX(priority), 0) AS max_priority FROM products');
+    return Number(rows[0]?.max_priority || 0);
+  }
+
+  async setPriority(productId, priority) {
+    const pool = await getMySQLConnection();
+    await pool.execute('UPDATE products SET priority = ? WHERE id = ?', [priority, productId]);
+    return this.findById(productId);
+  }
+
+  /**
+   * Diminue le stock après commande validée (quantité vendue).
+   * @returns {boolean} true si au moins une ligne a été mise à jour
+   */
+  async decrementStock(productId, quantity) {
+    const q = Math.max(0, parseInt(String(quantity), 10) || 0);
+    if (q <= 0) return true;
+    const pool = await getMySQLConnection();
+    const [result] = await pool.execute(
+      'UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?',
+      [q, productId, q]
+    );
+    return result.affectedRows > 0;
   }
 
   mapRowToObject(row) {

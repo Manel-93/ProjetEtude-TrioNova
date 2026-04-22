@@ -1,4 +1,7 @@
 import express from 'express';
+import fs from 'fs';
+import path from 'path';
+import multer from 'multer';
 import { Admin2FAController } from '../controllers/admin2faController.js';
 import { DashboardController } from '../controllers/dashboardController.js';
 import { ContactMessageController } from '../controllers/contactMessageController.js';
@@ -15,12 +18,38 @@ import {
   createContactMessageSchema,
   updateContactMessageStatusSchema
 } from '../validators/contactMessageValidator.js';
+import { replaceHomeCarouselSchema } from '../validators/homeCarouselValidator.js';
+import { HomeCarouselController } from '../controllers/homeCarouselController.js';
+import { TopProductController } from '../controllers/topProductController.js';
+import { AdminBillingController } from '../controllers/adminBillingController.js';
+import { addTopProductSchema, reorderTopProductsSchema } from '../validators/topProductValidator.js';
+import { fileURLToPath } from 'url';
 
 const router = express.Router();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const uploadDir = path.join(__dirname, '..', 'uploads', 'home-carousel');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, uploadDir),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname || '').toLowerCase();
+      const safeExt = ['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext) ? ext : '.jpg';
+      cb(null, `carousel-${Date.now()}-${Math.round(Math.random() * 1e9)}${safeExt}`);
+    }
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 }
+});
 const admin2faController = new Admin2FAController();
 const dashboardController = new DashboardController();
 const contactMessageController = new ContactMessageController();
 const adminController = new AdminController();
+const homeCarouselController = new HomeCarouselController();
+const topProductController = new TopProductController();
+const adminBillingController = new AdminBillingController();
 
 /**
  * @swagger
@@ -584,6 +613,68 @@ router.post('/users/:id/reset-password', authenticate, isAdmin, validate(resetUs
  *         description: Utilisateur introuvable
  */
 router.get('/users/:id/revenue-stats', authenticate, isAdmin, adminController.getUserRevenueStats);
+
+/**
+ * @swagger
+ * /admin/home-carousel:
+ *   get:
+ *     summary: Liste des diapositives (admin)
+ *     tags: [Admin, Carrousel]
+ *     security:
+ *       - bearerAuth: []
+ *   put:
+ *     summary: Remplacer tout le carrousel
+ *     tags: [Admin, Carrousel]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/home-carousel', authenticate, isAdmin, homeCarouselController.getAdminSlides);
+router.put(
+  '/home-carousel',
+  authenticate,
+  isAdmin,
+  validate(replaceHomeCarouselSchema),
+  logAdminActivity('HOME_CAROUSEL_UPDATE', 'home_carousel'),
+  homeCarouselController.putAdminSlides
+);
+router.post(
+  '/home-carousel/upload',
+  authenticate,
+  isAdmin,
+  upload.array('images', 20),
+  homeCarouselController.uploadImages
+);
+
+router.get('/top-products', authenticate, isAdmin, topProductController.getAll);
+router.post(
+  '/top-products',
+  authenticate,
+  isAdmin,
+  validate(addTopProductSchema),
+  logAdminActivity('TOP_PRODUCT_ADD', 'product'),
+  topProductController.add
+);
+router.delete(
+  '/top-products/:productId',
+  authenticate,
+  isAdmin,
+  logAdminActivity('TOP_PRODUCT_REMOVE', 'product'),
+  topProductController.remove
+);
+router.put(
+  '/top-products/reorder',
+  authenticate,
+  isAdmin,
+  validate(reorderTopProductsSchema),
+  logAdminActivity('TOP_PRODUCT_REORDER', 'product'),
+  topProductController.reorder
+);
+
+router.get('/billing/orders/:id/invoice/pdf', authenticate, isAdmin, adminBillingController.downloadInvoicePdf);
+router.post('/billing/orders/:id/invoice/email', authenticate, isAdmin, adminBillingController.sendInvoiceEmail);
+router.post('/billing/orders/:id/credit-note', authenticate, isAdmin, adminBillingController.createCreditNote);
+router.post('/billing/orders/:id/credit-note/automatic', authenticate, isAdmin, adminBillingController.createAutomaticCreditNote);
+router.delete('/billing/orders/:id/invoice', authenticate, isAdmin, adminBillingController.deleteInvoice);
 
 export default router;
 

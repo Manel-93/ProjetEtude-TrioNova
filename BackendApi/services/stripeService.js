@@ -1,14 +1,20 @@
 import { getStripeClient } from '../config/stripe.js';
 import { PaymentRepository } from '../repositories/paymentRepository.js';
+import { PaymentMethodRepository } from '../repositories/paymentMethodRepository.js';
+import { UserRepository } from '../repositories/userRepository.js';
 import { CartService } from './cartService.js';
 import { OrderService } from './orderService.js';
+import { EmailService } from './emailService.js';
 
 export class StripeService {
   constructor() {
     this.stripe = getStripeClient();
     this.paymentRepository = new PaymentRepository();
+    this.paymentMethodRepository = new PaymentMethodRepository();
+    this.userRepository = new UserRepository();
     this.cartService = new CartService();
     this.orderService = new OrderService();
+    this.emailService = new EmailService();
   }
 
   // Créer un PaymentIntent
@@ -278,6 +284,10 @@ export class StripeService {
           payment = await this.paymentRepository.updateStatus(paymentIntentId, newStatus, metadata);
         }
 
+        if (event.type === 'payment_intent.succeeded' && payment?.userId) {
+          await this.saveUserPaymentMethodFromIntent(payment, event.data.object);
+        }
+
         // Créer la commande après mise à jour du statut du paiement
         if (shouldCreateOrder && payment) {
           console.log('🔵 [STRIPE SERVICE] shouldCreateOrder is TRUE, payment exists:', {
@@ -310,6 +320,9 @@ export class StripeService {
             });
             
             console.log('✅ [STRIPE SERVICE] Order created successfully:', order.orderNumber);
+
+            // Email de confirmation de commande (best-effort)
+            await this.sendOrderConfirmationEmail(order, payment.userId);
           } catch (orderError) {
             console.error('❌ [STRIPE SERVICE] Error creating order from payment:');
             console.error('   Error type:', orderError.constructor.name);
@@ -354,6 +367,88 @@ export class StripeService {
     return statusMap[stripeStatus] || 'pending';
   }
 
+  async saveUserPaymentMethodFromIntent(payment, paymentIntentEventObject) {
+    if (!payment?.userId) return;
+
+    try {
+      const piId = paymentIntentEventObject?.id;
+      if (!piId) return;
+
+      const paymentIntent = await this.stripe.paymentIntents.retrieve(piId, {
+        expand: ['latest_charge.payment_method', 'payment_method']
+      });
+
+      const pmRef = paymentIntent.payment_method || paymentIntent?.latest_charge?.payment_method;
+      const paymentMethodId = typeof pmRef === 'string' ? pmRef : pmRef?.id || null;
+
+      const latestCharge =
+        typeof paymentIntent.latest_charge === 'object' ? paymentIntent.latest_charge : null;
+
+      const customerId =
+        (typeof paymentIntent.customer === 'string'
+          ? paymentIntent.customer
+          : paymentIntent.customer?.id) ||
+        (typeof latestCharge?.customer === 'string'
+          ? latestCharge.customer
+          : latestCharge?.customer?.id) ||
+        null;
+
+      const card =
+        (typeof pmRef === 'object' && pmRef?.card) ||
+        latestCharge?.payment_method_details?.card ||
+        null;
+
+      if (!paymentMethodId) return;
+
+      const brandUp = card?.brand ? String(card.brand).replace(/_/g, ' ').toUpperCase() : '';
+      const labelParts = ['Carte bancaire'];
+      if (brandUp) labelParts.push(brandUp);
+      if (card?.last4) labelParts.push(`···· ${card.last4}`);
+      await this.paymentRepository.mergeMetadataById(payment.id, {
+        paymentMethodType: 'card',
+        paymentMethodLabel: labelParts.join(' · '),
+        cardBrand: card?.brand || null,
+        cardLast4: card?.last4 || null
+      });
+
+      const exists = await this.paymentMethodRepository.findByUserIdAndStripePaymentMethodId(
+        payment.userId,
+        paymentMethodId
+      );
+      if (exists) return;
+
+      await this.paymentMethodRepository.create({
+        userId: payment.userId,
+        stripeCustomerId: customerId || null,
+        stripePaymentMethodId: paymentMethodId,
+        type: 'card',
+        isDefault: false,
+        last4: card?.last4 || null,
+        brand: card?.brand || null,
+        expiryMonth: card?.exp_month || null,
+        expiryYear: card?.exp_year || null
+      });
+    } catch (error) {
+      console.warn('⚠️ Could not save payment method from Stripe:', error.message);
+    }
+  }
+
+  async sendOrderConfirmationEmail(order, userId) {
+    if (!order || !userId) return;
+    try {
+      const user = await this.userRepository.findById(userId);
+      if (!user?.email) return;
+      await this.emailService.sendOrderConfirmation(
+        user.email,
+        user.first_name || user.firstName || '',
+        order.orderNumber,
+        order.total
+      );
+    } catch (error) {
+      console.warn('⚠️ Could not send order confirmation email:', error.message);
+    }
+  }
+
   // Récupérer le statut d'un paiement
   async getPaymentStatus(paymentIntentId) {
     try {
@@ -373,6 +468,39 @@ export class StripeService {
       console.error('❌ Error retrieving payment status:', error.message);
       throw error;
     }
+  }
+
+  /**
+   * Finalisation côté serveur sans webhook (utile en dev local).
+   * Idempotent grâce à la vérification findByPaymentId dans createOrderFromPayment.
+   */
+  async finalizePaymentIntent(paymentIntentId) {
+    const paymentIntent = await this.stripe.paymentIntents.retrieve(paymentIntentId);
+    if (!paymentIntent) {
+      throw new Error('PaymentIntent introuvable');
+    }
+
+    const syntheticEvent = {
+      type:
+        paymentIntent.status === 'succeeded'
+          ? 'payment_intent.succeeded'
+          : paymentIntent.status === 'canceled'
+            ? 'payment_intent.canceled'
+            : paymentIntent.status === 'processing'
+              ? 'payment_intent.processing'
+              : paymentIntent.status === 'requires_payment_method'
+                ? 'payment_intent.payment_failed'
+                : 'payment_intent.processing',
+      data: { object: paymentIntent }
+    };
+
+    const result = await this.handleWebhookEvent(syntheticEvent);
+    return {
+      paymentIntentId,
+      stripeStatus: paymentIntent.status,
+      processed: result?.processed === true,
+      eventType: result?.eventType || syntheticEvent.type
+    };
   }
 }
 

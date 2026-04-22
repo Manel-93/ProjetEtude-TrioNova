@@ -32,19 +32,32 @@ export class CategoryRepository {
     return rows[0] ? this.mapRowToObject(rows[0]) : null;
   }
 
+  async countByParentId(parentId) {
+    const pool = await getMySQLConnection();
+    const [rows] = await pool.execute(
+      'SELECT COUNT(*) AS c FROM categories WHERE parent_id = ?',
+      [parentId]
+    );
+    return Number(rows[0]?.c) || 0;
+  }
+
   async create(categoryData) {
     const pool = await getMySQLConnection();
-    const [result] = await pool.execute(`
-      INSERT INTO categories (name, description, parent_id, display_order, status, slug)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `, [
-      categoryData.name,
-      categoryData.description || null,
-      categoryData.parentId || null,
-      categoryData.displayOrder || 0,
-      categoryData.status || 'active',
-      categoryData.slug
-    ]);
+    const [result] = await pool.execute(
+      `
+      INSERT INTO categories (name, description, parent_id, display_order, status, slug, image_url)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `,
+      [
+        categoryData.name,
+        categoryData.description || null,
+        categoryData.parentId || null,
+        categoryData.displayOrder || 0,
+        categoryData.status || 'active',
+        categoryData.slug,
+        categoryData.imageUrl || null
+      ]
+    );
     return this.findById(result.insertId);
   }
 
@@ -72,6 +85,10 @@ export class CategoryRepository {
     if (categoryData.slug !== undefined) {
       updates.push('slug = ?');
       params.push(categoryData.slug);
+    }
+    if (categoryData.imageUrl !== undefined) {
+      updates.push('image_url = ?');
+      params.push(categoryData.imageUrl || null);
     }
     if (categoryData.parentId !== undefined) {
       // Empêcher une catégorie d'être son propre parent
@@ -109,6 +126,7 @@ export class CategoryRepository {
       displayOrder: row.display_order,
       status: row.status,
       slug: row.slug,
+      imageUrl: row.image_url || null,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };

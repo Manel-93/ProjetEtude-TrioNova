@@ -96,7 +96,8 @@ export class ElasticsearchService {
       inStock,
       sortBy = 'priority', 
       page = 1,
-      limit = 20
+      limit = 20,
+      excludeStorefrontHidden = true
     } = queryParams;
 
     const from = (page - 1) * limit;
@@ -137,6 +138,154 @@ export class ElasticsearchService {
       } else {
         filter.push({ term: { stock: 0 } });
       }
+    }
+
+    if (excludeStorefrontHidden) {
+      filter.push({
+        bool: {
+          must_not: [
+            {
+              bool: {
+                should: [
+                  { wildcard: { 'name.keyword': { value: '*chaise*roulante*', case_insensitive: true } } },
+                  { wildcard: { 'name.keyword': { value: '*chaise-roulante*', case_insensitive: true } } },
+                  { wildcard: { 'name.keyword': { value: '*déambulateur*', case_insensitive: true } } },
+                  { wildcard: { 'name.keyword': { value: '*deambulateur*', case_insensitive: true } } },
+                  { wildcard: { 'name.keyword': { value: '*seringue*', case_insensitive: true } } },
+                  {
+                    bool: {
+                      must: [
+                        { wildcard: { 'name.keyword': { value: '*gants*', case_insensitive: true } } },
+                        { wildcard: { 'name.keyword': { value: '*nitrile*', case_insensitive: true } } },
+                        {
+                          bool: {
+                            should: [
+                              {
+                                bool: {
+                                  must: [
+                                    { wildcard: { 'name.keyword': { value: '*non*', case_insensitive: true } } },
+                                    { wildcard: { 'name.keyword': { value: '*poudre*', case_insensitive: true } } }
+                                  ]
+                                }
+                              },
+                              {
+                                bool: {
+                                  must: [
+                                    { wildcard: { 'name.keyword': { value: '*sans*', case_insensitive: true } } },
+                                    { wildcard: { 'name.keyword': { value: '*poudre*', case_insensitive: true } } }
+                                  ]
+                                }
+                              }
+                            ],
+                            minimum_should_match: 1
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    bool: {
+                      must: [
+                        {
+                          bool: {
+                            should: [
+                              { wildcard: { 'name.keyword': { value: '*gueridon*', case_insensitive: true } } },
+                              { wildcard: { 'name.keyword': { value: '*guerido*', case_insensitive: true } } }
+                            ],
+                            minimum_should_match: 1
+                          }
+                        },
+                        { wildcard: { 'name.keyword': { value: '*inox*', case_insensitive: true } } }
+                      ]
+                    }
+                  },
+                  {
+                    bool: {
+                      must: [
+                        { wildcard: { 'name.keyword': { value: '*table*', case_insensitive: true } } },
+                        { wildcard: { 'name.keyword': { value: '*examen*', case_insensitive: true } } },
+                        {
+                          bool: {
+                            should: [
+                              { wildcard: { 'name.keyword': { value: '*electrique*', case_insensitive: true } } },
+                              { wildcard: { 'name.keyword': { value: '*électrique*', case_insensitive: true } } },
+                              { wildcard: { 'name.keyword': { value: '*electronique*', case_insensitive: true } } },
+                              { wildcard: { 'name.keyword': { value: '*électronique*', case_insensitive: true } } }
+                            ],
+                            minimum_should_match: 1
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    bool: {
+                      must: [
+                        {
+                          bool: {
+                            should: [
+                              { wildcard: { 'name.keyword': { value: '*tensiometre*', case_insensitive: true } } },
+                              { wildcard: { 'name.keyword': { value: '*tensiomètre*', case_insensitive: true } } }
+                            ],
+                            minimum_should_match: 1
+                          }
+                        },
+                        {
+                          bool: {
+                            should: [
+                              { wildcard: { 'name.keyword': { value: '*bras*', case_insensitive: true } } },
+                              { wildcard: { 'name.keyword': { value: '*brassard*', case_insensitive: true } } }
+                            ],
+                            minimum_should_match: 1
+                          }
+                        },
+                        {
+                          bool: {
+                            should: [
+                              { wildcard: { 'name.keyword': { value: '*electrique*', case_insensitive: true } } },
+                              { wildcard: { 'name.keyword': { value: '*électrique*', case_insensitive: true } } },
+                              { wildcard: { 'name.keyword': { value: '*electronique*', case_insensitive: true } } },
+                              { wildcard: { 'name.keyword': { value: '*électronique*', case_insensitive: true } } }
+                            ],
+                            minimum_should_match: 1
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    bool: {
+                      must: [
+                        { wildcard: { 'name.keyword': { value: '*capteur*', case_insensitive: true } } },
+                        { wildcard: { 'name.keyword': { value: '*plan*', case_insensitive: true } } },
+                        {
+                          bool: {
+                            should: [
+                              { wildcard: { 'name.keyword': { value: '*radiolog*', case_insensitive: true } } },
+                              { wildcard: { 'name.keyword': { value: '*radiologie*', case_insensitive: true } } }
+                            ],
+                            minimum_should_match: 1
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    bool: {
+                      must: [
+                        { wildcard: { 'name.keyword': { value: '*autoclave*', case_insensitive: true } } },
+                        { wildcard: { 'name.keyword': { value: '*classe*', case_insensitive: true } } },
+                        { wildcard: { 'name.keyword': { value: '*classe*b*', case_insensitive: true } } }
+                      ]
+                    }
+                  }
+                ],
+                minimum_should_match: 1
+              }
+            }
+          ]
+        }
+      });
     }
 
     // Tri
@@ -220,18 +369,44 @@ export class ElasticsearchService {
         ? totalObj.value 
         : (typeof totalObj === 'number' ? totalObj : 0);
       
-      const products = hitList.map(hit => {
+      const products = hitList.map((hit) => {
         const source = hit._source || {};
         return {
           ...source,
           score: hit._score || 0,
-          technicalSpecs: source.technicalSpecs 
-            ? (typeof source.technicalSpecs === 'string' 
-                ? JSON.parse(source.technicalSpecs) 
-                : source.technicalSpecs)
+          technicalSpecs: source.technicalSpecs
+            ? typeof source.technicalSpecs === 'string'
+              ? JSON.parse(source.technicalSpecs)
+              : source.technicalSpecs
             : {}
         };
       });
+
+      // Toujours prendre les images depuis MongoDB : l’index ES peut être obsolète
+      // (catalogue / recherche sans images alors que ProductImage est à jour).
+      const productIds = [...new Set(products.map((p) => p.id).filter((id) => id != null))];
+      if (productIds.length > 0) {
+        const allImages = await this.productImageRepository.findByProductIds(productIds);
+        const byProductId = new Map();
+        for (const img of allImages) {
+          const pid = Number(img.productId);
+          if (!byProductId.has(pid)) byProductId.set(pid, []);
+          byProductId.get(pid).push({
+            url: img.url,
+            alt: img.alt || '',
+            isPrimary: Boolean(img.isPrimary),
+            order: img.order ?? 0
+          });
+        }
+        for (const p of products) {
+          const pid = Number(p.id);
+          if (byProductId.has(pid)) {
+            p.images = byProductId.get(pid);
+          } else if (!Array.isArray(p.images)) {
+            p.images = [];
+          }
+        }
+      }
 
       return {
         data: products,

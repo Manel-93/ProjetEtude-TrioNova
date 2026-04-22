@@ -144,6 +144,18 @@ router.get('/', productController.getAllProducts);
 
 /**
  * @swagger
+ * /products/categories:
+ *   get:
+ *     summary: Liste des catégories actives (vitrine)
+ *     tags: [Produits]
+ *     responses:
+ *       200:
+ *         description: Liste des catégories
+ */
+router.get('/categories', productController.getPublicCategories);
+
+/**
+ * @swagger
  * /products/{slug}:
  *   get:
  *     summary: Récupérer un produit par son slug

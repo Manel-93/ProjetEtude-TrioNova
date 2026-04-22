@@ -46,6 +46,15 @@ export class PaymentMethodRepository {
     return rows[0] ? this.mapRowToObject(rows[0]) : null;
   }
 
+  async findByUserIdAndStripePaymentMethodId(userId, stripePaymentMethodId) {
+    const pool = await getMySQLConnection();
+    const [rows] = await pool.execute(
+      'SELECT * FROM payment_methods WHERE user_id = ? AND stripe_payment_method_id = ? LIMIT 1',
+      [userId, stripePaymentMethodId]
+    );
+    return rows[0] ? this.mapRowToObject(rows[0]) : null;
+  }
+
   async setDefault(userId, paymentMethodId) {
     const pool = await getMySQLConnection();
     

@@ -23,7 +23,8 @@ export const createCategorySchema = Joi.object({
   slug: Joi.string().pattern(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).required().messages({
     'string.pattern.base': 'Le slug doit contenir uniquement des lettres minuscules, chiffres et tirets',
     'any.required': 'Le slug est requis'
-  })
+  }),
+  imageUrl: Joi.string().uri().max(2048).allow('', null).optional()
 });
 
 export const updateCategorySchema = Joi.object({
@@ -47,7 +48,8 @@ export const updateCategorySchema = Joi.object({
   }),
   slug: Joi.string().pattern(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional().messages({
     'string.pattern.base': 'Le slug doit contenir uniquement des lettres minuscules, chiffres et tirets'
-  })
+  }),
+  imageUrl: Joi.string().uri().max(2048).allow('', null).optional()
 }).min(1).messages({
   'object.min': 'Au moins un champ doit être fourni pour la mise à jour'
 });

@@ -2,6 +2,13 @@ import { ProductRepository } from '../repositories/productRepository.js';
 import { ProductImageRepository } from '../repositories/productImageRepository.js';
 import { CategoryRepository } from '../repositories/categoryRepository.js';
 import { ElasticsearchService } from './elasticsearchService.js';
+import { isProductExcludedFromStorefront } from '../utils/storefrontProductExclusions.js';
+
+function productNotFoundError() {
+  const err = new Error('Produit introuvable');
+  err.statusCode = 404;
+  return err;
+}
 
 export class ProductService {
   constructor() {
@@ -11,8 +18,8 @@ export class ProductService {
     this.elasticsearchService = new ElasticsearchService();
   }
 
-  async getAllProducts(filters, pagination) {
-    const result = await this.productRepository.findAll(filters, pagination);
+  async getAllProducts(filters, pagination, options = {}) {
+    const result = await this.productRepository.findAll(filters, pagination, options);
     
     const productsWithImages = await Promise.all(
       result.data.map(async (product) => {
@@ -30,10 +37,13 @@ export class ProductService {
     };
   }
 
-  async getProductBySlug(slug) {
+  async getProductBySlug(slug, options = {}) {
     const product = await this.productRepository.findBySlug(slug);
     if (!product) {
-      throw new Error('Produit introuvable');
+      throw productNotFoundError();
+    }
+    if (options.excludeStorefrontHidden && isProductExcludedFromStorefront(product)) {
+      throw productNotFoundError();
     }
     
     const images = await this.productImageRepository.findByProductId(product.id);
@@ -51,7 +61,7 @@ export class ProductService {
   async getProductById(id) {
     const product = await this.productRepository.findById(id);
     if (!product) {
-      throw new Error('Produit introuvable');
+      throw productNotFoundError();
     }
     
     const images = await this.productImageRepository.findByProductId(product.id);
@@ -106,7 +116,7 @@ export class ProductService {
   async updateProduct(id, productData) {
     const product = await this.productRepository.findById(id);
     if (!product) {
-      throw new Error('Produit introuvable');
+      throw productNotFoundError();
     }
     
     if (productData.slug && productData.slug !== product.slug) {
@@ -137,7 +147,7 @@ export class ProductService {
   async deleteProduct(id) {
     const product = await this.productRepository.findById(id);
     if (!product) {
-      throw new Error('Produit introuvable');
+      throw productNotFoundError();
     }
     
     await this.productImageRepository.deleteByProductId(id);
@@ -159,7 +169,7 @@ export class ProductService {
     
     const product = await this.productRepository.findById(pId);
     if (!product) {
-      throw new Error('Produit introuvable');
+      throw productNotFoundError();
     }
     
     const existingImages = await this.productImageRepository.findByProductId(pId);
@@ -190,7 +200,7 @@ export class ProductService {
 
     const product = await this.productRepository.findById(pId);
     if (!product) {
-      throw new Error('Produit introuvable');
+      throw productNotFoundError();
     }
     
     const image = await this.productImageRepository.findById(imageId);
