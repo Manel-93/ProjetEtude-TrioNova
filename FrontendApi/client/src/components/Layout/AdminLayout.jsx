@@ -27,7 +27,7 @@ export default function AdminLayout() {
   };
 
   return (
-    <div className="relative min-h-screen text-slate-800">
+    <div className="admin-surface relative min-h-screen text-slate-800">
       <div
         className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
         aria-hidden
