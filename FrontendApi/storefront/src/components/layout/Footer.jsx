@@ -25,9 +25,6 @@ export default function Footer() {
               {t('footer.cgv')}
             </Link>
           </div>
-          <Link to="/tests-unitaires" className="inline-block text-ocean transition hover:underline">
-            {t('testsUnit.title')}
-          </Link>
         </div>
         <div className="space-y-4">
           <p className="text-sm font-semibold uppercase tracking-wide text-ink">{t('footer.contact')}</p>

@@ -6,6 +6,7 @@ import { getDefaultMedicalImageUrl, placeholderUrl } from '../utils/catalogFallb
 import { getCategoryCoverImageUrl } from '../utils/categoryImage';
 import ProductCard from '../components/ProductCard';
 import { getCategoryDisplayName, getCategoryDisplayDescription } from '../utils/categoryLocale';
+import { useAppLanguage } from '../hooks/useAppLanguage';
 
 function normalizeProductName(name) {
   return String(name || '')
@@ -29,8 +30,8 @@ function isHiddenCatalogProduct(product) {
 
 export default function CategoryPage() {
   const { categoryId } = useParams();
-  const { t, i18n } = useTranslation();
-  const lang = i18n?.language || 'fr';
+  const { t } = useTranslation();
+  const { lang } = useAppLanguage();
   const id = parseInt(categoryId, 10);
 
   const { data: meta } = useQuery({

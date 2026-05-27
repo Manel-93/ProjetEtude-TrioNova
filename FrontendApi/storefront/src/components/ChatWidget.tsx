@@ -2,16 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MessageCircle, Send, Sparkles, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { isRtlLanguage as isRtlLang } from '../i18n/language.js';
+import { useAppLanguage } from '../hooks/useAppLanguage';
 import { Link } from 'react-router-dom';
 import { sendChatbotMessage, sendContact } from '../services/contact';
 import { getApiError } from '../utils/errors';
 import { stripChatMarkdown } from '../utils/stripChatMarkdown';
-
-type I18nLike = {
-  dir?: () => string;
-  resolvedLanguage?: string;
-  language?: string;
-};
 
 type ChatMessage = {
   role: 'user' | 'bot';
@@ -19,23 +15,14 @@ type ChatMessage = {
   escalated?: boolean;
 };
 
-function isRtlLanguage(i18n: I18nLike) {
-  try {
-    if (typeof i18n.dir === 'function') return i18n.dir() === 'rtl';
-  } catch {
-    /* ignore */
-  }
-  const lng = String(i18n.resolvedLanguage || i18n.language || '').toLowerCase();
-  return lng.startsWith('ar');
-}
-
 function isValidEmail(s: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s || '').trim());
 }
 
 export default function ChatWidget() {
-  const { t, i18n } = useTranslation();
-  const isRtl = isRtlLanguage(i18n);
+  const { t } = useTranslation();
+  const { lang } = useAppLanguage();
+  const isRtl = isRtlLang(lang);
   const [open, setOpen] = useState(false);
   const [sessionId, setSessionId] = useState('');
   const [input, setInput] = useState('');
@@ -152,8 +139,8 @@ export default function ChatWidget() {
     }
   };
 
-  const fabLabel = t('contact.floatingChatButton', { defaultValue: 'Contact Me' });
-  const corner = isRtl ? 'left-5 sm:left-8' : 'right-5 sm:right-8';
+  const fabLabel = t('contact.floatingChatButton');
+  const corner = isRtl ? 'left-2 sm:left-8' : 'right-2 sm:right-8';
   const floatingBottom = 'calc(1.25rem + env(safe-area-inset-bottom, 0px))';
   const floatingSide = isRtl ? { left: '1.25rem' } : { right: '1.25rem' };
   const floatingZIndex = 2147483647;
@@ -173,7 +160,7 @@ export default function ChatWidget() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="althea-chat-title"
-        className={`fixed z-[2147483647] flex max-h-[min(85vh,640px)] w-[min(92vw,400px)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_-8px_40px_rgba(15,23,42,0.18)] ${corner}`}
+        className={`fixed z-[2147483647] flex max-h-[min(85vh,640px)] w-[min(calc(100vw-1rem),400px)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_-8px_40px_rgba(15,23,42,0.18)] ${corner}`}
         style={{ bottom: floatingBottom, zIndex: floatingZIndex, ...floatingSide }}
       >
         <div className="relative shrink-0 bg-gradient-to-br from-[#00a8b5] via-teal-600 to-cyan-700 px-5 pb-8 pt-4 text-white">
@@ -329,13 +316,13 @@ export default function ChatWidget() {
         e.stopPropagation();
         setOpen(true);
       }}
-      className={`pointer-events-auto fixed z-[2147483647] inline-flex min-h-[3.5rem] min-w-[220px] max-w-[calc(100vw-2.5rem)] touch-manipulation cursor-pointer items-center justify-center gap-3 rounded-full px-8 text-base font-semibold text-white shadow-[0_8px_30px_rgba(6,148,162,0.45)] ring-2 ring-white/90 transition-all duration-200 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 sm:min-w-[280px] ${corner}`}
+      className={`pointer-events-auto fixed z-[2147483647] inline-flex min-h-[3.25rem] max-w-[calc(100vw-1rem)] touch-manipulation cursor-pointer items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold text-white shadow-[0_8px_30px_rgba(6,148,162,0.45)] ring-2 ring-white/90 transition-all duration-200 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 sm:min-h-[3.5rem] sm:gap-3 sm:px-8 sm:text-base sm:min-w-[280px] ${corner}`}
       style={{
         bottom: floatingBottom,
         zIndex: floatingZIndex,
         backgroundColor: launcherColor,
-        minWidth: '260px',
-        maxWidth: 'calc(100vw - 2.5rem)',
+        minWidth: 'min(260px, calc(100vw - 1rem))',
+        maxWidth: 'calc(100vw - 1rem)',
         ...floatingSide
       }}
       aria-haspopup="dialog"
@@ -343,7 +330,7 @@ export default function ChatWidget() {
       aria-label={t('contact.chatOpen')}
     >
       <MessageCircle className="h-6 w-6 shrink-0" aria-hidden />
-      <span className="whitespace-nowrap">{fabLabel}</span>
+      <span className="truncate whitespace-nowrap">{fabLabel}</span>
     </button>
   );
 

@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { validateCart, createPaymentIntent, finalizePaymentIntent } from '../services/cart';
 import { createAddress } from '../services/users';
 import { getApiError } from '../utils/errors';
+import { useAppLanguage } from '../hooks/useAppLanguage';
 
 const pk = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 const stripePromise = pk ? loadStripe(pk) : null;
@@ -88,6 +89,9 @@ function PaymentForm({ onSuccess }) {
 
 export default function CheckoutPage() {
   const { t } = useTranslation();
+  const { lang } = useAppLanguage();
+  const stripeLocale = lang === 'ar' ? 'ar' : lang === 'en' ? 'en' : 'fr';
+
   const { user, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -198,21 +202,21 @@ export default function CheckoutPage() {
             </div>
           </div>
           <div>
-            <label className="text-xs font-medium text-slate-600">Adresse</label>
+            <label className="text-xs font-medium text-slate-600">{t('checkout.addressLine1')}</label>
             <input className="input" value={addr.addressLine1} onChange={(e) => setAddr((a) => ({ ...a, addressLine1: e.target.value }))} />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="text-xs font-medium text-slate-600">Ville</label>
+              <label className="text-xs font-medium text-slate-600">{t('checkout.city')}</label>
               <input className="input" value={addr.city} onChange={(e) => setAddr((a) => ({ ...a, city: e.target.value }))} />
             </div>
             <div>
-              <label className="text-xs font-medium text-slate-600">Code postal</label>
+              <label className="text-xs font-medium text-slate-600">{t('checkout.postalCode')}</label>
               <input className="input" value={addr.postalCode} onChange={(e) => setAddr((a) => ({ ...a, postalCode: e.target.value }))} />
             </div>
           </div>
           <div>
-            <label className="text-xs font-medium text-slate-600">Pays</label>
+            <label className="text-xs font-medium text-slate-600">{t('checkout.country')}</label>
             <input className="input" value={addr.country} onChange={(e) => setAddr((a) => ({ ...a, country: e.target.value }))} />
           </div>
           <div>
@@ -224,7 +228,7 @@ export default function CheckoutPage() {
           </button>
           {!user ? (
             <p className="text-xs text-slate-500">
-              En tant qu’invité, l’adresse sert à la livraison affichée localement ; la commande utilisera les données du paiement côté serveur.
+              {t('checkout.guestAddressHint')}
             </p>
           ) : null}
         </div>
@@ -234,9 +238,11 @@ export default function CheckoutPage() {
         <div className="card p-6">
           <h2 className="mb-4 font-semibold text-slate-900">{t('checkout.stepPayment')}</h2>
           <Elements
+            key={`${clientSecret}-${stripeLocale}`}
             stripe={stripePromise}
             options={{
               clientSecret,
+              locale: stripeLocale,
               appearance: { theme: 'stripe' }
             }}
           >

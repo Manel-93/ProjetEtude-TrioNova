@@ -1,19 +1,25 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchProducts, fetchProductBySlug } from '../services/products';
 import { addToCart } from '../services/cart';
 import { getApiError } from '../utils/errors';
-import { isInStock, buildProductGalleryImages, getPrimaryImageUrl } from '../utils/product';
+import { isInStock, buildProductGalleryImages, getPrimaryImageUrl, getProductStockValue } from '../utils/product';
 import ProductCard from '../components/ProductCard';
 import { resolveMediaUrl } from '../utils/mediaUrl';
-import { getProductDisplayName } from '../utils/productLocale';
+import {
+  getProductDisplayDescription,
+  getProductDisplayName,
+  getProductDisplaySpecs
+} from '../utils/productLocale';
 import { getCategoryDisplayName } from '../utils/categoryLocale';
+import { useAppLanguage } from '../hooks/useAppLanguage';
 
 export default function ProductPage() {
   const { slug } = useParams();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
+  const { lang } = useAppLanguage();
   const qc = useQueryClient();
   const [imgIdx, setImgIdx] = useState(0);
   const [msg, setMsg] = useState('');
@@ -43,13 +49,26 @@ export default function ProductPage() {
   });
 
   const addMut = useMutation({
-    mutationFn: (qty) => addToCart(data.id, qty),
+    mutationFn: (qty) => addToCart(data?.id, qty),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cart'] });
       setMsg('');
     },
     onError: (e) => setMsg(getApiError(e))
   });
+
+  const displayName = useMemo(
+    () => (data ? getProductDisplayName(data, lang) : ''),
+    [data, lang]
+  );
+  const displayDescription = useMemo(
+    () => (data ? getProductDisplayDescription(data, lang) : ''),
+    [data, lang]
+  );
+  const specEntries = useMemo(
+    () => (data ? getProductDisplaySpecs(data, lang) : []),
+    [data, lang]
+  );
 
   if (isLoading) {
     return <p className="text-center text-slate-500">{t('common.loading')}</p>;
@@ -62,8 +81,8 @@ export default function ProductPage() {
   const main = images[imgIdx] || images[0];
   const mainUrl = main?.url ? resolveMediaUrl(main.url) : getPrimaryImageUrl(data);
   const stockOk = isInStock(data);
-  const specs = data.technicalSpecs && typeof data.technicalSpecs === 'object' ? data.technicalSpecs : null;
-  const displayName = getProductDisplayName(data, i18n?.language || 'fr');
+  const stockValue = getProductStockValue(data);
+  const outOfStock = stockValue != null && stockValue <= 0;
 
   return (
     <div className="mx-auto max-w-6xl space-y-10">
@@ -99,15 +118,15 @@ export default function ProductPage() {
           <p className="mt-4 text-3xl font-bold text-ocean">
             {t('product.price', { value: Number(data.priceTtc).toFixed(2) })}
           </p>
-          <p className="mt-2 text-sm font-medium text-slate-600">
-            {stockOk ? t('product.stock') : t('product.outOfStock')}
+          <p className={`mt-2 text-sm font-medium ${outOfStock ? 'text-red-600' : 'text-slate-600'}`}>
+            {outOfStock ? t('product.outOfStock') : t('product.stock')}
           </p>
           {data.category ? (
             <Link
               to={`/catalogue/${data.category.id}`}
               className="mt-2 inline-block text-sm text-ocean hover:underline"
             >
-              {getCategoryDisplayName(data.category, i18n?.language || 'fr')}
+              {getCategoryDisplayName(data.category, lang)}
             </Link>
           ) : null}
 
@@ -124,17 +143,19 @@ export default function ProductPage() {
           {msg ? <p className="mt-3 text-sm text-red-600">{msg}</p> : null}
 
           <div className="prose prose-slate mt-8 max-w-none">
-            <p className="whitespace-pre-wrap text-slate-700">{data.description}</p>
+            <p className="whitespace-pre-wrap text-slate-700">
+              {displayDescription}
+            </p>
           </div>
 
-          {specs && Object.keys(specs).length > 0 ? (
-            <div className="mt-8">
+          {specEntries.length > 0 ? (
+            <div className="mt-8" lang={lang} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
               <h2 className="text-lg font-semibold text-slate-900">{t('product.specs')}</h2>
               <dl className="mt-3 divide-y divide-slate-200 rounded-xl border border-slate-200">
-                {Object.entries(specs).map(([k, v]) => (
-                  <div key={k} className="grid grid-cols-3 gap-2 px-4 py-2 text-sm">
-                    <dt className="font-medium text-slate-600">{k}</dt>
-                    <dd className="col-span-2 text-slate-900">{String(v)}</dd>
+                {specEntries.map(({ key, value }, idx) => (
+                  <div key={`${lang}-${idx}-${key}`} className="grid grid-cols-3 gap-2 px-4 py-2 text-sm">
+                    <dt className="font-medium text-slate-600">{key}</dt>
+                    <dd className="col-span-2 text-slate-900">{value}</dd>
                   </div>
                 ))}
               </dl>

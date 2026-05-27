@@ -27,6 +27,9 @@
   },
   "home": {
     "carousel": "مختارات",
+    "carouselPrevious": "الشريحة السابقة",
+    "carouselNext": "الشريحة التالية",
+    "carouselSlide": "الشريحة {{index}}",
     "categories": "الفئات",
     "topProducts": "الأكثر مبيعاً",
     "noProducts": "لا توجد منتجات حالياً."
@@ -93,7 +96,12 @@
     "paymentNotReady": "نموذج الدفع لا يزال يُحمّل. انتظر قليلاً ثم أعد المحاولة.",
     "paymentProcessing": "جاري معالجة الدفع. سيتم إعادة التوجيه أو ستصلك رسالة تأكيد.",
     "paymentLoading": "جاري الاتصال بـ Stripe… يُفعّل زر الدفع عند جاهزية النموذج.",
-    "paymentLoadError": "تعذّر تحميل نموذج الدفع (الشبكة، مانع الإعلانات، أو مفتاح Stripe)."
+    "paymentLoadError": "تعذّر تحميل نموذج الدفع (الشبكة، مانع الإعلانات، أو مفتاح Stripe).",
+    "addressLine1": "العنوان",
+    "city": "المدينة",
+    "postalCode": "الرمز البريدي",
+    "country": "الدولة",
+    "guestAddressHint": "كمستخدم ضيف، يُستخدم هذا العنوان للعرض المحلي للتسليم؛ بينما تعتمد الطلبية على بيانات الدفع في الخادم."
   },
   "auth": {
     "loginTitle": "تسجيل الدخول",
@@ -206,7 +214,7 @@
     "formErrorEmail": "بريد إلكتروني غير صالح.",
     "formErrorSubject": "الموضوع مطلوب.",
     "formErrorMessage": "الرسالة قصيرة جدًا.",
-    "floatingChatButton": "Contact Me",
+    "floatingChatButton": "تواصل معنا",
     "widgetEscalationHint": "تحتاج إلى موظف؟ أرسل طلبك.",
     "widgetSupportSuccess": "تم إرسال طلبك إلى الدعم.",
     "widgetSupportSubjectPlaceholder": "الموضوع",

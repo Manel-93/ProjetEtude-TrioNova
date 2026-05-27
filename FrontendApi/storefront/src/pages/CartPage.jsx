@@ -6,9 +6,11 @@ import { getApiError } from '../utils/errors';
 import { isInStock, getPrimaryImageUrl } from '../utils/product';
 import { getDefaultMedicalImageUrl, placeholderUrl } from '../utils/catalogFallbackImages';
 import { getProductDisplayName } from '../utils/productLocale';
+import { useAppLanguage } from '../hooks/useAppLanguage';
 
 export default function CartPage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
+  const { lang } = useAppLanguage();
   const qc = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
@@ -51,7 +53,7 @@ export default function CartPage() {
           {unavailable.length > 0 ? (
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
               {t('cart.stockIssue')} :{' '}
-              {unavailable.map((i) => getProductDisplayName(i.product, i18n?.language || 'fr')).join(', ')}
+              {unavailable.map((i) => getProductDisplayName(i.product, lang)).join(', ')}
             </div>
           ) : null}
 
@@ -60,7 +62,7 @@ export default function CartPage() {
               const p = line.product;
               const ok = isInStock(p);
               const img = getPrimaryImageUrl({ ...p, images: p.images || [] });
-              const lineTitle = getProductDisplayName(p, i18n?.language || 'fr');
+              const lineTitle = getProductDisplayName(p, lang);
               const fallbackImg = placeholderUrl(lineTitle || 'Product', 200, 200);
               return (
                 <li key={line.id} className="card flex flex-col gap-4 p-4 sm:flex-row sm:items-center">

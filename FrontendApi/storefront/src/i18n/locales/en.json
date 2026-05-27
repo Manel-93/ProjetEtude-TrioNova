@@ -27,6 +27,9 @@
   },
   "home": {
     "carousel": "Highlights",
+    "carouselPrevious": "Previous slide",
+    "carouselNext": "Next slide",
+    "carouselSlide": "Slide {{index}}",
     "categories": "Categories",
     "topProducts": "Top products",
     "noProducts": "No products yet."
@@ -93,7 +96,12 @@
     "paymentNotReady": "The payment form is still loading. Wait a moment and try again.",
     "paymentProcessing": "Payment is processing. You will be redirected or receive a confirmation email.",
     "paymentLoading": "Connecting to Stripe… The Pay button enables once the form is ready.",
-    "paymentLoadError": "Could not load the payment form (network, ad blocker, or Stripe key)."
+    "paymentLoadError": "Could not load the payment form (network, ad blocker, or Stripe key).",
+    "addressLine1": "Address",
+    "city": "City",
+    "postalCode": "Postal code",
+    "country": "Country",
+    "guestAddressHint": "As a guest, this address is used for local delivery display; the order uses payment-side data on the server."
   },
   "auth": {
     "loginTitle": "Sign in",
@@ -206,7 +214,7 @@
     "formErrorEmail": "Invalid email.",
     "formErrorSubject": "Subject is required.",
     "formErrorMessage": "Message is too short.",
-    "floatingChatButton": "Contact Me",
+    "floatingChatButton": "Contact us",
     "widgetEscalationHint": "Need a human agent? Send your request.",
     "widgetSupportSuccess": "Your request has been sent to support.",
     "widgetSupportSubjectPlaceholder": "Subject",

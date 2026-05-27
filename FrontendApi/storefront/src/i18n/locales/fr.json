@@ -27,6 +27,9 @@
   },
   "home": {
     "carousel": "À la une",
+    "carouselPrevious": "Diapositive précédente",
+    "carouselNext": "Diapositive suivante",
+    "carouselSlide": "Diapositive {{index}}",
     "categories": "Catégories",
     "topProducts": "Produits populaires",
     "noProducts": "Aucun produit pour le moment."
@@ -93,7 +96,12 @@
     "paymentNotReady": "Le formulaire de paiement charge encore. Patientez une seconde puis réessayez.",
     "paymentProcessing": "Paiement en cours de traitement. Vous serez redirigé ou recevrez une confirmation par e-mail.",
     "paymentLoading": "Connexion à Stripe… Le bouton Payer s’active dès que le formulaire est prêt.",
-    "paymentLoadError": "Impossible de charger le formulaire de paiement (réseau, bloqueur de pub ou clé Stripe)."
+    "paymentLoadError": "Impossible de charger le formulaire de paiement (réseau, bloqueur de pub ou clé Stripe).",
+    "addressLine1": "Adresse",
+    "city": "Ville",
+    "postalCode": "Code postal",
+    "country": "Pays",
+    "guestAddressHint": "En tant qu’invité, l’adresse sert à la livraison affichée localement ; la commande utilisera les données du paiement côté serveur."
   },
   "auth": {
     "loginTitle": "Connexion",
@@ -206,7 +214,7 @@
     "formErrorEmail": "Email invalide.",
     "formErrorSubject": "Sujet requis.",
     "formErrorMessage": "Message trop court.",
-    "floatingChatButton": "Contact Me",
+    "floatingChatButton": "Nous contacter",
     "widgetEscalationHint": "Besoin d’un agent humain ? Transmettez votre demande.",
     "widgetSupportSuccess": "Votre demande a été envoyée au support.",
     "widgetSupportSubjectPlaceholder": "Sujet",

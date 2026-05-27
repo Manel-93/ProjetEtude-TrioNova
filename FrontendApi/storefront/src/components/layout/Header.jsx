@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { SUPPORTED_LANGUAGES, changeAppLanguage, isActiveLanguage } from '../../i18n/language.js';
 import { Menu, X, ShoppingCart, Search } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getCart } from '../../services/cart';
@@ -35,11 +36,7 @@ export default function Header() {
     setOpen(false);
   };
 
-  const langs = [
-    { code: 'fr', label: 'FR' },
-    { code: 'en', label: 'EN' },
-    { code: 'ar', label: 'AR' }
-  ];
+  const currentLng = i18n.resolvedLanguage || i18n.language;
 
   const doLogout = () => {
     logout();
@@ -102,13 +99,13 @@ export default function Header() {
 
         <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           <div className="hidden items-center gap-1 lg:flex" role="group" aria-label={t('common.lang')}>
-            {langs.map((l) => (
+            {SUPPORTED_LANGUAGES.map((l) => (
               <button
                 key={l.code}
                 type="button"
-                onClick={() => i18n.changeLanguage(l.code)}
+                onClick={() => changeAppLanguage(i18n, l.code)}
                 className={`rounded-lg px-2 py-1 text-xs font-semibold ${
-                  i18n.language.startsWith(l.code) ? 'bg-ink text-white' : 'text-slate-600 hover:bg-slate-100'
+                  isActiveLanguage(currentLng, l.code) ? 'bg-ink text-white' : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
                 {l.label}
@@ -189,13 +186,13 @@ export default function Header() {
             </NavLink>
           )}
           <div className="flex gap-1 border-t border-slate-100 pt-2 lg:hidden">
-            {langs.map((l) => (
+            {SUPPORTED_LANGUAGES.map((l) => (
               <button
                 key={l.code}
                 type="button"
-                onClick={() => i18n.changeLanguage(l.code)}
+                onClick={() => changeAppLanguage(i18n, l.code)}
                 className={`rounded-lg px-2 py-1 text-xs font-semibold ${
-                  i18n.language.startsWith(l.code) ? 'bg-ink text-white' : 'bg-slate-100'
+                  isActiveLanguage(currentLng, l.code) ? 'bg-ink text-white' : 'bg-slate-100'
                 }`}
               >
                 {l.label}
