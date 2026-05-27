@@ -170,6 +170,12 @@ export class OrderService {
     // Mettre à jour le statut de la commande en "processing"
     await this.orderRepository.updateStatus(order.id, 'processing', null, 'Commande créée automatiquement après paiement réussi');
 
+    try {
+      await this.invoiceService.createInvoiceFromOrder(order.id);
+    } catch (invoiceErr) {
+      console.warn('[ORDER SERVICE] Facture non créée après paiement:', invoiceErr.message);
+    }
+
     return this.getOrderById(order.id);
   }
 
@@ -196,7 +202,15 @@ export class OrderService {
       return { ...it, unitPriceTtc: unitTtc };
     });
     const statusHistory = await this.orderRepository.getStatusHistory(orderId);
-    const invoice = await this.invoiceService.getInvoiceByOrderId(orderId);
+    let invoice = await this.invoiceService.getInvoiceByOrderId(orderId);
+    if (!invoice && ['processing', 'completed'].includes(order.status)) {
+      try {
+        await this.invoiceService.createInvoiceFromOrder(orderId);
+        invoice = await this.invoiceService.getInvoiceByOrderId(orderId);
+      } catch (invoiceErr) {
+        console.warn('[ORDER SERVICE] Génération facture à la lecture:', invoiceErr.message);
+      }
+    }
     const payment = order.paymentId ? await this.paymentRepository.findById(order.paymentId) : null;
     const paymentMethods = order.userId ? await this.paymentMethodRepository.findByUserId(order.userId) : [];
 
@@ -335,9 +349,13 @@ export class OrderService {
       throw new Error('Commande introuvable');
     }
 
-    // Générer la facture lorsqu'une commande est finalisée
+    // Générer la facture lorsqu'une commande est finalisée (si pas déjà créée au paiement)
     if (status === 'completed' && order.status !== 'completed') {
-      await this.invoiceService.createInvoiceFromOrder(orderId);
+      try {
+        await this.invoiceService.createInvoiceFromOrder(orderId);
+      } catch (invoiceErr) {
+        console.warn('[ORDER SERVICE] Facture à la finalisation:', invoiceErr.message);
+      }
     }
 
     // Si la commande est annulée, créer un avoir pour la facture

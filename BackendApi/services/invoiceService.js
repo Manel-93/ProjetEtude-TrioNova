@@ -7,9 +7,13 @@ import { OrderRepository } from '../repositories/orderRepository.js';
 import { UserRepository } from '../repositories/userRepository.js';
 import { EmailService } from './emailService.js';
 import { getMySQLConnection } from '../config/database.js';
+import { renderCreditNoteDocument, renderInvoiceDocument } from '../utils/billingPdfLayout.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+/** Statuts pour lesquels une facture peut être émise (paiement validé ou commande finalisée). */
+const INVOICE_ELIGIBLE_ORDER_STATUSES = ['processing', 'completed'];
 
 export class InvoiceService {
   constructor() {
@@ -38,8 +42,10 @@ export class InvoiceService {
       return existingInvoice;
     }
 
-    if (order.status !== 'completed') {
-      throw new Error('La facture ne peut être générée que pour une commande finalisée');
+    if (!INVOICE_ELIGIBLE_ORDER_STATUSES.includes(order.status)) {
+      throw new Error(
+        'La facture ne peut être générée que pour une commande payée (en traitement ou finalisée)'
+      );
     }
 
     // Créer la facture
@@ -82,114 +88,15 @@ export class InvoiceService {
       user = await this.userRepository.findById(invoice.userId);
     }
 
-    // Créer le document PDF
-    const doc = new PDFDocument({ margin: 50 });
+    const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
     const filename = `invoice_${invoice.invoiceNumber}.pdf`;
     const filepath = path.join(this.invoicesDir, filename);
 
-    // Stream vers fichier
     const stream = fs.createWriteStream(filepath);
     doc.pipe(stream);
 
-    // En-tête
-    doc.fontSize(20).text('FACTURE', { align: 'center' });
-    doc.moveDown();
-    doc.fontSize(12).text(`N° ${invoice.invoiceNumber}`, { align: 'center' });
-    doc.moveDown(2);
+    renderInvoiceDocument(doc, { invoice, order, items, user });
 
-    // Informations entreprise (à personnaliser)
-    doc.fontSize(10)
-       .text('TrioNova / AltheSystems', 50, 100)
-       .text('Adresse entreprise', 50, 115)
-       .text('Code postal Ville', 50, 130)
-       .text('Email: contact@trionova.com', 50, 145)
-       .text('Tél: +33 X XX XX XX XX', 50, 160);
-
-    // Informations client
-    const clientY = 100;
-    doc.fontSize(10)
-       .text('FACTURÉ À:', 350, clientY, { width: 200, align: 'right' });
-    
-    if (user) {
-      doc.text(`${user.first_name} ${user.last_name}`, 350, clientY + 15, { width: 200, align: 'right' });
-      doc.text(user.email, 350, clientY + 30, { width: 200, align: 'right' });
-    } else {
-      doc.text('Client invité', 350, clientY + 15, { width: 200, align: 'right' });
-    }
-
-    if (order.billingAddress) {
-      const addr = order.billingAddress;
-      if (addr.addressLine1) doc.text(addr.addressLine1, 350, clientY + 45, { width: 200, align: 'right' });
-      if (addr.addressLine2) doc.text(addr.addressLine2, 350, clientY + 60, { width: 200, align: 'right' });
-      if (addr.postalCode && addr.city) doc.text(`${addr.postalCode} ${addr.city}`, 350, clientY + 75, { width: 200, align: 'right' });
-      if (addr.country) doc.text(addr.country, 350, clientY + 90, { width: 200, align: 'right' });
-    }
-
-    // Date et commande
-    const infoY = clientY + (order.billingAddress ? 120 : 60);
-    doc.text(`Date d'émission: ${new Date(invoice.createdAt).toLocaleDateString('fr-FR')}`, 50, infoY);
-    doc.text(`Commande N°: ${order.orderNumber}`, 50, infoY + 15);
-
-    // Tableau des articles
-    let tableY = infoY + 50;
-    doc.moveTo(50, tableY).lineTo(550, tableY).stroke();
-    
-    // En-tête du tableau
-    doc.fontSize(10).font('Helvetica-Bold')
-       .text('Produit', 50, tableY + 10)
-       .text('Qté', 300, tableY + 10)
-       .text('Prix unitaire HT', 350, tableY + 10)
-       .text('TVA', 450, tableY + 10)
-       .text('Total TTC', 480, tableY + 10);
-    
-    tableY += 30;
-    doc.moveTo(50, tableY).lineTo(550, tableY).stroke();
-    doc.font('Helvetica');
-
-    // Articles
-    for (const item of items) {
-      if (tableY > 700) {
-        doc.addPage();
-        tableY = 50;
-      }
-      
-      doc.fontSize(9)
-         .text(item.productName, 50, tableY + 5, { width: 240 })
-         .text(item.quantity.toString(), 300, tableY + 5)
-         .text(`${item.unitPriceHt.toFixed(2)} €`, 350, tableY + 5)
-         .text(`${item.tva.toFixed(2)} %`, 450, tableY + 5)
-         .text(`${item.total.toFixed(2)} €`, 480, tableY + 5);
-      
-      tableY += 25;
-    }
-
-    // Totaux
-    tableY += 10;
-    doc.moveTo(50, tableY).lineTo(550, tableY).stroke();
-    tableY += 20;
-
-    doc.fontSize(10)
-       .text('Sous-total HT:', 350, tableY, { width: 100, align: 'right' })
-       .text(`${invoice.subtotal.toFixed(2)} €`, 480, tableY);
-    
-    tableY += 20;
-    doc.text(`TVA (${items[0]?.tva || 20}%):`, 350, tableY, { width: 100, align: 'right' })
-       .text(`${invoice.tva.toFixed(2)} €`, 480, tableY);
-    
-    tableY += 20;
-    doc.moveTo(350, tableY).lineTo(550, tableY).stroke();
-    tableY += 10;
-    
-    doc.fontSize(12).font('Helvetica-Bold')
-       .text('Total TTC:', 350, tableY, { width: 100, align: 'right' })
-       .text(`${invoice.total.toFixed(2)} €`, 480, tableY);
-
-    // Pied de page
-    const footerY = doc.page.height - 50;
-    doc.fontSize(8).font('Helvetica')
-       .text('Merci pour votre achat !', 50, footerY, { align: 'center', width: 500 });
-
-    // Finaliser le PDF
     doc.end();
 
     // Attendre que le stream soit terminé
@@ -263,16 +170,10 @@ export class InvoiceService {
 
   // Récupérer le PDF d'une facture
   async getInvoicePDF(invoiceId, userId = null) {
-    const invoice = await this.getInvoiceById(invoiceId, userId);
-    
-    if (!invoice.pdfPath || !fs.existsSync(invoice.pdfPath)) {
-      // Régénérer le PDF s'il n'existe pas
-      await this.generateInvoicePDF(invoiceId);
-      const updatedInvoice = await this.invoiceRepository.findById(invoiceId);
-      return updatedInvoice.pdfPath;
-    }
-
-    return invoice.pdfPath;
+    await this.getInvoiceById(invoiceId, userId);
+    await this.generateInvoicePDF(invoiceId);
+    const updatedInvoice = await this.invoiceRepository.findById(invoiceId);
+    return updatedInvoice.pdfPath;
   }
 
   // Créer un avoir (credit note)
@@ -429,12 +330,9 @@ export class InvoiceService {
       throw new Error('Accès non autorisé à cet avoir');
     }
 
-    if (!creditNote.pdfPath || !fs.existsSync(creditNote.pdfPath)) {
-      await this.generateCreditNotePDF(creditNoteId);
-      const updated = await this.invoiceRepository.findCreditNoteById(creditNoteId);
-      return updated?.pdfPath;
-    }
-    return creditNote.pdfPath;
+    await this.generateCreditNotePDF(creditNoteId);
+    const updated = await this.invoiceRepository.findCreditNoteById(creditNoteId);
+    return updated?.pdfPath;
   }
 
   // Générer le PDF d'un avoir
@@ -452,41 +350,14 @@ export class InvoiceService {
       user = await this.userRepository.findById(creditNote.userId);
     }
 
-    // Créer le document PDF
-    const doc = new PDFDocument({ margin: 50 });
+    const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
     const filename = `credit_note_${creditNote.creditNoteNumber}.pdf`;
     const filepath = path.join(this.invoicesDir, filename);
 
     const stream = fs.createWriteStream(filepath);
     doc.pipe(stream);
 
-    // En-tête
-    doc.fontSize(20).text('AVOIR', { align: 'center' });
-    doc.moveDown();
-    doc.fontSize(12).text(`N° ${creditNote.creditNoteNumber}`, { align: 'center' });
-    doc.moveDown(2);
-
-    // Informations
-    doc.fontSize(10)
-       .text('TrioNova / AltheSystems', 50, 100)
-       .text(`Date d'émission: ${new Date(creditNote.createdAt).toLocaleDateString('fr-FR')}`, 50, 130)
-       .text(`Facture N°: ${invoice.invoiceNumber}`, 50, 145)
-       .text(`Commande N°: ${order.orderNumber}`, 50, 160);
-
-    if (user) {
-      doc.text(`Client: ${user.first_name} ${user.last_name}`, 50, 175);
-    }
-
-    // Motif
-    doc.moveDown(2);
-    doc.fontSize(12).font('Helvetica-Bold').text('Motif:', 50);
-    doc.fontSize(10).font('Helvetica').text(creditNote.reason || 'Non spécifié', 50);
-
-    // Montant
-    doc.moveDown(2);
-    doc.fontSize(12).font('Helvetica-Bold').text('Montant remboursé:', 50);
-    doc.fontSize(14).font('Helvetica-Bold')
-       .text(`${creditNote.amount.toFixed(2)} ${creditNote.currency}`, 50);
+    renderCreditNoteDocument(doc, { creditNote, invoice, order, user });
 
     doc.end();
 
