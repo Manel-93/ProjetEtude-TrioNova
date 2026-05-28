@@ -21,7 +21,9 @@ export class ProductController {
 
   getAllProducts = async (req, res, next) => {
     try {
-      const { page = 1, limit = 20, categoryId, status, search, inStock } = req.query;
+      const { categoryId, status, search, inStock } = req.query;
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 20;
       const filters = {};
       if (status) filters.status = status;
       if (categoryId) filters.categoryId = parseInt(categoryId);
