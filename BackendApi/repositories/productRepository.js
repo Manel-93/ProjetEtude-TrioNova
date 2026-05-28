@@ -43,7 +43,7 @@ export class ProductRepository {
     query += ' ORDER BY priority DESC, CASE WHEN stock > 0 THEN 0 ELSE 1 END, created_at DESC LIMIT ? OFFSET ?';
     params.push(limit, offset);
     
-    const [rows] = await pool.execute(query, params);
+    const [rows] = await pool.execute(query, [...params, Number(limit), Number(offset)]);
     
     // Compter le total
     let countQuery = 'SELECT COUNT(*) as total FROM products WHERE 1=1';
