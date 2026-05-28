@@ -41,9 +41,9 @@ export class ProductRepository {
     
     // Tri : priorité décroissante, puis stock > 0 en premier, puis date de création
     query += ' ORDER BY priority DESC, CASE WHEN stock > 0 THEN 0 ELSE 1 END, created_at DESC LIMIT ? OFFSET ?';
-    params.push(limit, offset);
+    params.push(Number(limit), Number(offset));
     
-    const [rows] = await pool.execute(query, [...params, Number(limit), Number(offset)]);
+    const [rows] = await pool.execute(query, params);
     
     // Compter le total
     let countQuery = 'SELECT COUNT(*) as total FROM products WHERE 1=1';
