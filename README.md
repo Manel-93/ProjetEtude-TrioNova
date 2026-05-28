@@ -2,6 +2,13 @@
 
 Plateforme e-commerce (boutique vitrine + API + panneau d’administration). Ce dépôt regroupe le **backend Node.js**, la **boutique React** (Vite) et le **client admin** (Vite).
 
+MOT DE PASSE ADMIN : Manel_2005*
+MOT DE PASSE CLIENT : Sterenn123!
+
+Cluster mongodb : https://account.mongodb.com/account/login?n=https%3A%2F%2Fcloud.mongodb.com%2Fv2%2F6945432623d2c824487a4c08&nextHash=%23explorer%2F&signedOut=true
+
+
+
 ## Architecture
 
 | Composant | Port dev (défaut) | Rôle |
