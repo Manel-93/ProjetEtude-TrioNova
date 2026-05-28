@@ -4,7 +4,8 @@ import { sqlStorefrontProductExclusion } from '../utils/storefrontProductExclusi
 export class ProductRepository {
   async findAll(filters = {}, pagination = {}, options = {}) {
     const pool = await getMySQLConnection();
-    const { page = 1, limit = 20 } = pagination;
+    const page = Number(pagination.page ?? 1);
+    const limit = Number(pagination.limit ?? 20);
     const offset = (page - 1) * limit;
     
     let query = `
