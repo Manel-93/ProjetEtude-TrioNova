@@ -47,10 +47,10 @@ export class ProductRepository {
     console.log('DEBUG params:', JSON.stringify(params));
     console.log('DEBUG types:', params.map(p => typeof p));
     
-    const [rows] = await pool.execute(query, params);
+    const [rows] = await pool.query(query, params);
     
     // Compter le total
-    
+
     // Compter le total
     let countQuery = 'SELECT COUNT(*) as total FROM products WHERE 1=1';
     const countParams = [];
