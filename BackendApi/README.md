@@ -99,6 +99,8 @@ npm run dev
 ```bash
 npm start
 ```
+MOT DE PASSE ADMIN = Manel_2005*
+MOT DE PASSE CLIENT = Sterenn123!
 
 ## Tests côté frontend storefront
 
